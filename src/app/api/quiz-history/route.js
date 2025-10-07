@@ -22,7 +22,8 @@ export async function POST(request) {
       userName: session.user.name,
       userEmail: session.user.email,
       userImage: session.user.image,
-      quizTitle: quizData.quizTitle || "Untitled Quiz",
+      quizTitle:
+        quizData.metadata?.quizName || quizData.quizTitle || "Untitled Quiz",
       mode: quizData.mode, // solo or multiplayer
       roomCode: quizData.roomCode || null,
       score: quizData.score,
@@ -61,7 +62,7 @@ export async function GET(request) {
     }
 
     const collection = await getQuizHistoryCollection();
-    
+
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const historyId = searchParams.get("id");
@@ -74,7 +75,10 @@ export async function GET(request) {
       });
 
       if (!history) {
-        return NextResponse.json({ error: "Quiz history not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Quiz history not found" },
+          { status: 404 }
+        );
       }
 
       return NextResponse.json({
@@ -95,9 +99,9 @@ export async function GET(request) {
           totalQuestions: 1,
           percentage: 1,
           totalTime: 1,
-          'metadata.source': 1,
-          'metadata.topic': 1,
-          'metadata.difficulty': 1,
+          "metadata.source": 1,
+          "metadata.topic": 1,
+          "metadata.difficulty": 1,
           completedAt: 1,
         })
         .limit(100) // Limit to last 100 quizzes

@@ -3,7 +3,8 @@ import { generateQuizFromPrompt } from "@/lib/openai";
 
 export async function POST(request) {
   try {
-    const { topic, numberOfQuestions, difficulty } = await request.json();
+    const { quizName, topic, numberOfQuestions, difficulty } =
+      await request.json();
 
     // Validate inputs
     if (!topic || !topic.trim()) {
@@ -34,6 +35,7 @@ export async function POST(request) {
     return NextResponse.json({
       quiz,
       metadata: {
+        quizName: (quizName && quizName.trim()) || topic,
         topic,
         numberOfQuestions: quiz.length,
         difficulty,

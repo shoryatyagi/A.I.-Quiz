@@ -36,7 +36,7 @@ app.prepare().then(() => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    socket.on("create-room", async ({ roomCode, quiz, hostName }) => {
+    socket.on("create-room", async ({ roomCode, quiz, metadata, hostName }) => {
       try {
         const rooms = await getRoomsCollection();
 
@@ -50,6 +50,7 @@ app.prepare().then(() => {
         const room = {
           roomCode,
           quiz,
+          metadata, // Store metadata with quiz name
           host: socket.id,
           hostName,
           players: [
@@ -151,6 +152,7 @@ app.prepare().then(() => {
           question: room.quiz[0],
           totalQuestions: room.quiz.length,
           quiz: room.quiz, // Send the full quiz array
+          metadata: room.metadata, // Send metadata to clients
         });
 
         console.log(`Quiz started in room: ${roomCode}`);

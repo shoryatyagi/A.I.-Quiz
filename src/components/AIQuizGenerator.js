@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Loader2, Brain } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
+
+const MAX_QUESTIONS = parseInt(process.env.NEXT_PUBLIC_MAX_QUESTIONS_AI) || 20;
 
 export default function AIQuizGenerator({ onQuizGenerated }) {
+  const [quizName, setQuizName] = useState("");
   const [topic, setTopic] = useState("");
   const [numberOfQuestions, setNumberOfQuestions] = useState(10);
   const [difficulty, setDifficulty] = useState("medium");
@@ -29,6 +32,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          quizName: quizName.trim(),
           topic: topic.trim(),
           numberOfQuestions,
           difficulty,
@@ -41,12 +45,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
         throw new Error(data.error || "Failed to generate quiz");
       }
 
-      onQuizGenerated(data.quiz, {
-        topic,
-        numberOfQuestions,
-        difficulty,
-        generatedAt: new Date().toISOString(),
-      });
+      onQuizGenerated(data.quiz, data.metadata);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -55,150 +54,149 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-2xl mx-auto p-8"
-    >
-      <div className="bg-white rounded-2xl shadow-xl p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="bg-gradient-to-br from-purple-600 to-pink-600 p-3 rounded-xl">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">
-              AI Quiz Generator
-            </h2>
-            <p className="text-sm text-gray-600">Powered by DeepSeek V3.1</p>
-          </div>
-        </div>
-
-        <form onSubmit={handleGenerate} className="space-y-6">
-          {/* Topic Input */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Quiz Topic *
-            </label>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Artificial Intelligence, World History, Python Programming..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Enter any topic you want to be quizzed on
-            </p>
-          </div>
-
-          {/* Number of Questions */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Number of Questions
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="range"
-                min="5"
-                max="20"
-                value={numberOfQuestions}
-                onChange={(e) => setNumberOfQuestions(parseInt(e.target.value))}
-                className="flex-1"
-                disabled={loading}
-              />
-              <span className="text-2xl font-bold text-purple-600 w-12 text-center">
-                {numberOfQuestions}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>5 questions</span>
-              <span>20 questions</span>
-            </div>
-          </div>
-
-          {/* Difficulty Level */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Difficulty Level
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setDifficulty("easy")}
-                disabled={loading}
-                className={`py-3 px-4 rounded-lg font-semibold transition-all ${
-                  difficulty === "easy"
-                    ? "bg-green-500 text-white shadow-lg scale-105"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Easy
-              </button>
-              <button
-                type="button"
-                onClick={() => setDifficulty("medium")}
-                disabled={loading}
-                className={`py-3 px-4 rounded-lg font-semibold transition-all ${
-                  difficulty === "medium"
-                    ? "bg-yellow-500 text-white shadow-lg scale-105"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Medium
-              </button>
-              <button
-                type="button"
-                onClick={() => setDifficulty("hard")}
-                disabled={loading}
-                className={`py-3 px-4 rounded-lg font-semibold transition-all ${
-                  difficulty === "hard"
-                    ? "bg-red-500 text-white shadow-lg scale-105"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Hard
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              <strong>Easy:</strong> Basic concepts &nbsp;|&nbsp;
-              <strong>Medium:</strong> Moderate complexity &nbsp;|&nbsp;
-              <strong>Hard:</strong> Advanced topics
-            </p>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {/* Generate Button */}
-          <button
-            type="submit"
-            disabled={loading || !topic.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-4 px-6 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Generating Quiz...
-              </>
-            ) : (
-              <>
-                <Brain className="w-5 h-5" />
-                Generate Quiz with AI
-              </>
-            )}
-          </button>
-
-          <p className="text-xs text-gray-500 text-center">
-            AI will create {numberOfQuestions} {difficulty} level questions
-            about {topic || "your topic"}
-          </p>
-        </form>
+    <form onSubmit={handleGenerate} className="space-y-6">
+      {/* Quiz Name Input */}
+      <div>
+        <label
+          className="block text-sm font-medium text-slate-700 mb-2"
+          htmlFor="quiz-name-ai"
+        >
+          Quiz Name
+        </label>
+        <input
+          type="text"
+          id="quiz-name-ai"
+          value={quizName}
+          onChange={(e) => setQuizName(e.target.value)}
+          placeholder="Enter a name for your quiz (optional)"
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] placeholder:text-slate-400 p-3 transition-all"
+        />
       </div>
-    </motion.div>
+
+      {/* AI Prompt */}
+      <div>
+        <label
+          className="block text-sm font-medium text-slate-700 mb-2"
+          htmlFor="ai-prompt"
+        >
+          AI Prompt
+        </label>
+        <textarea
+          id="ai-prompt"
+          name="ai-prompt"
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          placeholder="e.g., 'Create a 10-question multiple-choice quiz about the history of the internet.'"
+          rows="6"
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] placeholder:text-slate-400 resize-none p-3 transition-all"
+          disabled={loading}
+        />
+      </div>
+
+      {/* Number of Questions */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          Number of Questions:{" "}
+          <span className="text-[#135bec] font-bold">{numberOfQuestions}</span>
+        </label>
+        <input
+          type="range"
+          min="5"
+          max={MAX_QUESTIONS}
+          step="5"
+          value={numberOfQuestions}
+          onChange={(e) => setNumberOfQuestions(parseInt(e.target.value))}
+          className="w-full"
+          disabled={loading}
+        />
+        <div className="flex justify-between text-xs text-slate-500 mt-1">
+          <span>5</span>
+          <span>{Math.floor(MAX_QUESTIONS * 0.5)}</span>
+          <span>{MAX_QUESTIONS}</span>
+        </div>
+      </div>
+
+      {/* Difficulty Level */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          Difficulty Level
+        </label>
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            type="button"
+            onClick={() => setDifficulty("easy")}
+            disabled={loading}
+            className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
+              difficulty === "easy"
+                ? "bg-[#135bec] text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            Easy
+          </button>
+          <button
+            type="button"
+            onClick={() => setDifficulty("medium")}
+            disabled={loading}
+            className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
+              difficulty === "medium"
+                ? "bg-[#135bec] text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            Medium
+          </button>
+          <button
+            type="button"
+            onClick={() => setDifficulty("hard")}
+            disabled={loading}
+            className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
+              difficulty === "hard"
+                ? "bg-[#135bec] text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            Hard
+          </button>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"
+        >
+          {error}
+        </motion.div>
+      )}
+
+      {/* Generate Button */}
+      <div className="flex flex-col items-end gap-2">
+        {!topic.trim() && (
+          <p className="text-xs text-slate-500 italic">
+            Please enter an AI prompt to continue
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={loading || !topic.trim()}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#135bec] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Generating Quiz...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5" />
+              Generate Quiz
+            </>
+          )}
+        </button>
+      </div>
+    </form>
   );
 }

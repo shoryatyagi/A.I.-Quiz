@@ -100,7 +100,7 @@ export default function QuizQuestion({
               whileTap={!answered ? { scale: 0.98 } : {}}
               onClick={() => handleAnswer(index)}
               disabled={answered}
-              className={`w-full p-4 border-2 rounded-xl text-left transition-all flex items-center gap-3 ${getOptionClass(
+              className={`w-full p-4 border-2 rounded-xl text-left transition-all flex items-center gap-3 cursor-pointer ${getOptionClass(
                 index
               )}`}
             >

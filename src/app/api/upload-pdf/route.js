@@ -6,6 +6,7 @@ export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
+    const quizName = formData.get("quizName") || "";
     const numberOfQuestions = parseInt(
       formData.get("numberOfQuestions") || "10"
     );
@@ -52,6 +53,7 @@ export async function POST(request) {
       success: true,
       quiz,
       metadata: {
+        quizName: (quizName && quizName.trim()) || file.name.replace('.pdf', ''),
         fileName: file.name,
         numPages,
         numberOfQuestions: quiz.length,

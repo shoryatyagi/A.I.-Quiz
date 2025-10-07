@@ -93,7 +93,7 @@ export default function QuizResults({
       }
 
       console.log("💾 Attempting to save quiz history...");
-      
+
       // Mark as saving IMMEDIATELY to prevent duplicate calls
       hasSavedRef.current = true;
 
@@ -180,139 +180,109 @@ export default function QuizResults({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-4xl mx-auto p-8"
-    >
-      {/* Score Card */}
-      <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-2xl p-8 mb-8 text-white text-center">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring" }}
-        >
-          <Trophy className="w-20 h-20 mx-auto mb-4" />
-        </motion.div>
-        <h2 className="text-4xl font-bold mb-4">Quiz Completed!</h2>
-        <div className="text-6xl font-bold mb-2">
-          {score}/{totalQuestions}
+    <main className="flex-1">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+            Quiz Results
+          </h1>
+          <p className="mt-4 text-lg text-slate-600">
+            Great job! Here&apos;s a summary of your performance.
+          </p>
         </div>
-        <div className="text-xl opacity-90 mb-4">{percentage}% Correct</div>
-        {leaderboard && leaderboard[0] && (
-          <div className="text-lg opacity-90">
-            Total Time: {formatTime(leaderboard[0].totalTime)}
+
+        {/* Score Display */}
+        <div className="mb-12 flex justify-center">
+          <div className="flex items-center gap-4 rounded-xl bg-[#135bec]/10 p-6">
+            <p className="text-lg font-medium text-[#135bec]">Your Score</p>
+            <p className="text-4xl font-bold text-[#135bec]">
+              {score}/{totalQuestions}
+            </p>
+          </div>
+        </div>
+
+        {/* Leaderboard (Multiplayer Mode) */}
+        {leaderboard && leaderboard.length > 0 && (
+          <div className="mb-8 rounded-lg border border-slate-200/80 bg-white/50 p-6">
+            <h3 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <Trophy className="w-6 h-6 text-yellow-500" />
+              Leaderboard
+            </h3>
+            <div className="space-y-3">
+              {leaderboard.map((player, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`p-4 rounded-lg flex items-center gap-4 ${
+                    index === 0
+                      ? "bg-yellow-50 border-2 border-yellow-300"
+                      : "bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-center w-10 h-10">
+                    {index === 0 ? (
+                      <Trophy className="w-7 h-7 text-yellow-500" />
+                    ) : index === 1 ? (
+                      <Medal className="w-7 h-7 text-slate-400" />
+                    ) : index === 2 ? (
+                      <Award className="w-7 h-7 text-orange-600" />
+                    ) : (
+                      <span className="text-xl font-bold text-slate-600">
+                        #{index + 1}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-lg text-slate-800">
+                      {player.name}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-slate-600">
+                      <div className="flex items-center gap-1">
+                        <Target className="w-4 h-4" />
+                        <span>
+                          {player.correctAnswers}/{totalQuestions}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{formatTime(player.totalTime)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Leaderboard (Multiplayer) */}
-      {leaderboard && leaderboard.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-yellow-500" />
-            Leaderboard
-          </h3>
-          <div className="space-y-4">
-            {leaderboard.map((player, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`p-4 rounded-xl flex items-center gap-4 ${
-                  index === 0
-                    ? "bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400"
-                    : "bg-gray-50"
-                }`}
-              >
-                <div className="flex items-center justify-center w-12 h-12">
-                  {getRankIcon(index) || (
-                    <span className="text-2xl font-bold text-gray-600">
-                      #{index + 1}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-lg text-gray-800">
-                    {player.name}
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Target className="w-4 h-4" />
-                      <span>
-                        {player.correctAnswers}/{totalQuestions} correct
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatTime(player.totalTime)} total</span>
-                    </div>
-                    <div className="text-xs opacity-75">
-                      (avg: {formatTime(player.avgTime)}/question)
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Answer Review */}
-      <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-        <h3 className="text-2xl font-bold text-gray-800 mb-6">Answer Review</h3>
+        {/* Answer Review */}
         <div className="space-y-6">
           {quiz.map((question, index) => {
             let userAnswerText;
             let isCorrect;
 
             if (leaderboard && currentPlayerData) {
-              // Multiplayer mode - match answer by QUESTION TEXT, not by index
-              // This is crucial because the client has a randomized quiz order
               const answerObj = currentPlayerData.answers?.find(
                 (ans) => ans.questionText === question.question
               );
               userAnswerText = answerObj?.selectedAnswerText;
               isCorrect = answerObj?.isCorrect;
-
-              console.log(`📝 Question ${index} (Multiplayer):`, {
-                question: question.question.substring(0, 50),
-                userAnswerText,
-                correctAnswerText: answerObj?.correctAnswerText,
-                isCorrect,
-                hasAnswerObj: !!answerObj,
-              });
             } else if (leaderboard && !currentPlayerData) {
-              // Multiplayer but player not found - use local userAnswers as fallback
-              console.warn(
-                `⚠️ Player not found in leaderboard! Using local answers.`
-              );
               userAnswerText = userAnswers[index];
               const correctAnswerText =
                 question.options[question.correctAnswer];
               isCorrect = userAnswerText === correctAnswerText;
-
-              console.log(`📝 Question ${index} (Multiplayer Fallback):`, {
-                question: question.question.substring(0, 50),
-                userAnswerText,
-                correctAnswerText,
-                isCorrect,
-              });
             } else {
-              // Solo mode - userAnswers contains answer text
               userAnswerText = userAnswers[index];
               const correctAnswerText =
                 question.options[question.correctAnswer];
               isCorrect = userAnswerText === correctAnswerText;
-
-              console.log(`📝 Question ${index} (Solo):`, {
-                question: question.question.substring(0, 50),
-                userAnswerText,
-                correctAnswerText,
-                isCorrect,
-              });
             }
+
+            const correctAnswerText = question.options[question.correctAnswer];
 
             return (
               <motion.div
@@ -320,65 +290,88 @@ export default function QuizResults({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`p-6 rounded-xl border-2 ${
-                  isCorrect
-                    ? "bg-green-50 border-green-200"
-                    : "bg-red-50 border-red-200"
-                }`}
+                className="rounded-lg border border-slate-200/80 bg-white/50"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  {isCorrect ? (
-                    <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-                  ) : (
-                    <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
-                  )}
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-800 mb-2">
-                      {index + 1}. {question.question}
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-700">
-                          Your answer:{" "}
-                        </span>
-                        <span
-                          className={
-                            isCorrect ? "text-green-700" : "text-red-700"
-                          }
-                        >
-                          {userAnswerText}
-                        </span>
-                      </div>
-                      {!isCorrect && (
-                        <div>
-                          <span className="font-medium text-gray-700">
-                            Correct answer:{" "}
-                          </span>
-                          <span className="text-green-700">
-                            {question.options[question.correctAnswer]}
-                          </span>
-                        </div>
-                      )}
-                      <div className="text-gray-600 mt-2 italic">
-                        {question.explanation}
-                      </div>
-                    </div>
-                  </div>
+                {/* Question */}
+                <div className="p-6">
+                  <p className="mb-1 text-sm font-medium text-slate-500">
+                    Question {index + 1}
+                  </p>
+                  <p className="text-lg font-semibold text-slate-900">
+                    {question.question}
+                  </p>
                 </div>
+
+                {/* Answer Section */}
+                {isCorrect ? (
+                  <div className="rounded-b-lg border-t border-slate-200/80 bg-green-500/10 px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-green-700">Your Answer</p>
+                        <p className="font-medium text-green-900">
+                          {userAnswerText}
+                        </p>
+                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                    </div>
+                    {question.explanation && (
+                      <p className="mt-3 text-sm text-slate-600 italic">
+                        {question.explanation}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4 rounded-b-lg border-t border-slate-200/80 px-6 py-4">
+                    {/* Wrong Answer */}
+                    <div className="flex items-center justify-between rounded-md bg-red-500/10 p-3">
+                      <div>
+                        <p className="text-sm text-red-700">
+                          Your Answer (Incorrect)
+                        </p>
+                        <p className="font-medium text-red-900 line-through">
+                          {userAnswerText}
+                        </p>
+                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white">
+                        <XCircle className="w-5 h-5" />
+                      </div>
+                    </div>
+                    {/* Correct Answer */}
+                    <div className="flex items-center justify-between rounded-md bg-green-500/10 p-3">
+                      <div>
+                        <p className="text-sm text-green-700">Correct Answer</p>
+                        <p className="font-medium text-green-900">
+                          {correctAnswerText}
+                        </p>
+                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                    </div>
+                    {question.explanation && (
+                      <p className="text-sm text-slate-600 italic">
+                        {question.explanation}
+                      </p>
+                    )}
+                  </div>
+                )}
               </motion.div>
             );
           })}
         </div>
-      </div>
 
-      {/* Action Button */}
-      <button
-        onClick={onPlayAgain}
-        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2"
-      >
-        <Home className="w-5 h-5" />
-        Back to Home
-      </button>
-    </motion.div>
+        {/* Back to Dashboard Button */}
+        <div className="mt-12 text-center">
+          <button
+            onClick={onPlayAgain}
+            className="rounded-full bg-[#135bec] px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-[#135bec]/80 cursor-pointer transition-all"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    </main>
   );
 }

@@ -5,23 +5,22 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
-import PDFUploader from "@/components/PDFUploader";
+import QuizCreator from "@/components/QuizCreator";
 import QuizMode from "@/components/QuizMode";
 import MultiplayerLobby from "@/components/MultiplayerLobby";
 import QuizQuestion from "@/components/QuizQuestion";
 import QuizResults from "@/components/QuizResults";
 import WaitingForResults from "@/components/WaitingForResults";
 import QuizSourceSelection from "@/components/QuizSourceSelection";
-import AIQuizGenerator from "@/components/AIQuizGenerator";
-import GoogleAuthButton from "@/components/GoogleAuthButton";
-import { Brain, Sparkles, Lock, History } from "lucide-react";
+import LandingPage from "@/components/LandingPage";
+import SignInPage from "@/components/SignInPage";
 
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
+
   // State Management
-  const [stage, setStage] = useState("mode"); // mode, source, upload, ai-generate, lobby, quiz, waiting, results
+  const [stage, setStage] = useState("landing"); // landing, signin, mode, source, upload, ai-generate, lobby, quiz, waiting, results
   const [quiz, setQuiz] = useState(null);
   const [metadata, setMetadata] = useState(null);
   const [mode, setMode] = useState(null); // solo, multiplayer
@@ -97,16 +96,22 @@ export default function Home() {
         currentQuestion: qIndex,
         totalQuestions,
         quiz: quizData,
+        metadata: quizMetadata,
       }) => {
         console.log("Quiz started event received:", {
           qIndex,
           totalQuestions,
           hasQuiz: !!quizData,
+          hasMetadata: !!quizMetadata,
         });
         if (quizData) {
           // Randomize quiz for this specific client
           const randomizedQuiz = randomizeQuiz(quizData);
           setQuiz(randomizedQuiz);
+        }
+        if (quizMetadata) {
+          // Set metadata for clients
+          setMetadata(quizMetadata);
         }
         setCurrentQuestion(qIndex);
         setUserAnswers([]);
@@ -175,6 +180,7 @@ export default function Home() {
       socket.off("quiz-finished");
       socket.off("host-disconnected");
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket]);
 
   // Helper function to randomize quiz for each client
@@ -227,6 +233,7 @@ export default function Home() {
         socket.emit("create-room", {
           roomCode,
           quiz: generatedQuiz, // Send original, clients will randomize
+          metadata: meta, // Send metadata with quiz name
           hostName: playerName,
         });
       }
@@ -238,8 +245,8 @@ export default function Home() {
     setMode(selectedMode);
 
     if (selectedMode === "solo") {
-      // Solo: go to source selection
-      setStage("source");
+      // Solo: go directly to quiz creator (skip source selection)
+      setStage("upload"); // This will show QuizCreator with tabs
     } else {
       // Multiplayer: automatically use Google account name
       if (session?.user?.name) {
@@ -263,7 +270,7 @@ export default function Home() {
   const handleCreateRoom = () => {
     // Use session user's name automatically
     const name = session?.user?.name || playerName.trim();
-    
+
     if (!name) {
       alert("Please enter your name");
       return;
@@ -274,14 +281,14 @@ export default function Home() {
     setIsHost(true);
     setRoomCode(code);
     setShowNamePrompt(false);
-    // Go to source selection for host
-    setStage("source");
+    // Go directly to quiz creator (skip source selection)
+    setStage("upload");
   };
 
   const handleJoinRoom = () => {
     // Use session user's name automatically
     const name = session?.user?.name || playerName.trim();
-    
+
     if (!name || !joinRoomCode.trim()) {
       alert("Please enter your name and room code");
       return;
@@ -300,6 +307,21 @@ export default function Home() {
 
   const handleStartQuiz = () => {
     socket.emit("start-quiz", { roomCode });
+  };
+
+  const handleCancelLobby = () => {
+    // Leave the room if joined
+    if (socket && roomCode) {
+      socket.emit("leave-room", { roomCode, playerName });
+    }
+    // Reset state
+    setStage("landing");
+    setMode(null);
+    setRoomCode("");
+    setIsHost(false);
+    setPlayers([]);
+    setQuiz(null);
+    setMetadata(null);
   };
 
   const handleAnswer = (answerIndex, timeSpent) => {
@@ -347,7 +369,11 @@ export default function Home() {
   };
 
   const resetGame = () => {
-    setStage("mode");
+    if (session) {
+      setStage("landing"); // Always go to landing (which shows Solo/Multiplayer)
+    } else {
+      setStage("landing");
+    }
     setQuiz(null);
     setMetadata(null);
     setMode(null);
@@ -362,76 +388,84 @@ export default function Home() {
     setShowJoinPrompt(false);
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-2 rounded-xl">
-                <Brain className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  AI Quiz Generator
-                </h1>
-                <p className="text-xs text-gray-600">Powered by DeepSeek AI</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <GoogleAuthButton />
-              {session && (
-                <>
-                  <button
-                    onClick={() => router.push("/history")}
-                    className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center gap-2"
-                  >
-                    <History className="w-4 h-4" />
-                    <span className="hidden sm:inline">History</span>
-                  </button>
-                  {stage !== "upload" && (
-                    <button
-                      onClick={resetGame}
-                      className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg"
-                    >
-                      New Quiz
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+  // Handle landing page mode selection (Solo or Multiplayer)
+  const handleLandingModeSelect = (selectedMode) => {
+    if (!session) {
+      setStage("signin");
+    } else {
+      setMode(selectedMode);
 
+      if (selectedMode === "solo") {
+        // Solo: go directly to quiz creator with tabs (skip source selection)
+        setStage("upload");
+      } else {
+        // Multiplayer: show name prompt, then source selection
+        if (session?.user?.name) {
+          setPlayerName(session.user.name);
+          setShowNamePrompt(true);
+        } else {
+          alert("Please sign in to play multiplayer mode");
+        }
+      }
+    }
+  };
+
+  // When user is not signed in, show landing or signin page
+  if (!session && status !== "loading") {
+    if (stage === "signin") {
+      return <SignInPage />;
+    }
+
+    return (
+      <LandingPage
+        onSelectMode={handleLandingModeSelect}
+        isAuthenticated={false}
+      />
+    );
+  }
+
+  return (
+    <div className="bg-background-light">
       {/* Main Content */}
       <main className="container mx-auto py-8 px-4 min-h-[calc(100vh-120px)]">
         <AnimatePresence mode="wait">
+          {stage === "landing" && (
+            <motion.div
+              key="landing"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <LandingPage
+                onSelectMode={handleLandingModeSelect}
+                isAuthenticated={true}
+              />
+            </motion.div>
+          )}{" "}
+          {stage === "mode" && (
+            <motion.div key="mode">
+              <QuizMode
+                onModeSelect={handleModeSelect}
+                onShowCreateRoom={() => setShowNamePrompt(true)}
+                onShowJoinRoom={() => setShowJoinPrompt(true)}
+              />
+            </motion.div>
+          )}
           {stage === "source" && (
             <motion.div key="source">
               <QuizSourceSelection onSelectSource={handleSourceSelect} />
             </motion.div>
           )}
-
-          {stage === "upload" && (
-            <motion.div key="upload">
-              <PDFUploader onQuizGenerated={handleQuizGenerated} />
+          {(stage === "upload" || stage === "ai-generate") && (
+            <motion.div key="create">
+              <QuizCreator onQuizGenerated={handleQuizGenerated} />
             </motion.div>
           )}
-
-          {stage === "ai-generate" && (
-            <motion.div key="ai-generate">
-              <AIQuizGenerator onQuizGenerated={handleQuizGenerated} />
-            </motion.div>
-          )}
-
           {stage === "mode" && (
             <motion.div key="mode">
               <QuizMode onSelectMode={handleModeSelect} />
             </motion.div>
           )}
-
           {stage === "lobby" && (
             <motion.div key="lobby">
               <MultiplayerLobby
@@ -440,10 +474,10 @@ export default function Home() {
                 isHost={isHost}
                 players={players}
                 onStartQuiz={handleStartQuiz}
+                onCancel={handleCancelLobby}
               />
             </motion.div>
           )}
-
           {stage === "quiz" && quiz && (
             <motion.div key="quiz">
               <QuizQuestion
@@ -454,7 +488,6 @@ export default function Home() {
               />
             </motion.div>
           )}
-
           {stage === "waiting" && (
             <motion.div key="waiting">
               <WaitingForResults
@@ -463,7 +496,6 @@ export default function Home() {
               />
             </motion.div>
           )}
-
           {stage === "results" && quiz && (
             <motion.div key="results">
               <QuizResults
@@ -526,7 +558,7 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleCreateRoom}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all cursor-pointer"
               >
                 Create Room
               </button>
@@ -535,7 +567,7 @@ export default function Home() {
                   setShowNamePrompt(false);
                   setShowJoinPrompt(true);
                 }}
-                className="bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-300 transition-all"
+                className="bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-300 transition-all cursor-pointer"
               >
                 Join Room
               </button>
@@ -546,7 +578,7 @@ export default function Home() {
                 setShowNamePrompt(false);
                 setMode(null);
               }}
-              className="w-full mt-4 text-gray-600 hover:text-gray-800 text-sm"
+              className="w-full mt-4 text-gray-600 hover:text-gray-800 text-sm cursor-pointer"
             >
               Cancel
             </button>
@@ -607,7 +639,7 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleJoinRoom}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all cursor-pointer"
               >
                 Join
               </button>
@@ -616,7 +648,7 @@ export default function Home() {
                   setShowJoinPrompt(false);
                   setShowNamePrompt(true);
                 }}
-                className="bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-300 transition-all"
+                className="bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-300 transition-all cursor-pointer"
               >
                 Back
               </button>
@@ -624,21 +656,6 @@ export default function Home() {
           </motion.div>
         </div>
       )}
-
-      {/* Footer */}
-      <footer className="bg-white/80 backdrop-blur-sm mt-16 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6 text-center text-gray-600">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            <span className="text-sm">
-              Powered by DeepSeek V3.1 AI via OpenRouter
-            </span>
-          </div>
-          <p className="text-xs text-gray-500">
-            Built with Next.js, TailwindCSS, Framer Motion, and Socket.IO
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
