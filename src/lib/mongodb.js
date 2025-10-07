@@ -22,6 +22,10 @@ async function connectToDatabase() {
     await db.collection('rooms').createIndex({ roomCode: 1 }, { unique: true });
     await db.collection('rooms').createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 }); // Auto-delete after 1 hour
     
+    // Create indexes for quiz history
+    await db.collection('quizHistory').createIndex({ userId: 1, completedAt: -1 });
+    await db.collection('quizHistory').createIndex({ 'metadata.source': 1 });
+    
     return { client, db };
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -34,4 +38,19 @@ async function getRoomsCollection() {
   return db.collection('rooms');
 }
 
-module.exports = { connectToDatabase, getRoomsCollection };
+async function getQuizHistoryCollection() {
+  const { db } = await connectToDatabase();
+  return db.collection('quizHistory');
+}
+
+async function getUsersCollection() {
+  const { db } = await connectToDatabase();
+  return db.collection('users');
+}
+
+module.exports = { 
+  connectToDatabase, 
+  getRoomsCollection,
+  getQuizHistoryCollection,
+  getUsersCollection
+};

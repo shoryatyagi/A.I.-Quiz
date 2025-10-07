@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
 import PDFUploader from "@/components/PDFUploader";
@@ -11,9 +13,13 @@ import QuizResults from "@/components/QuizResults";
 import WaitingForResults from "@/components/WaitingForResults";
 import QuizSourceSelection from "@/components/QuizSourceSelection";
 import AIQuizGenerator from "@/components/AIQuizGenerator";
-import { Brain, Sparkles } from "lucide-react";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
+import { Brain, Sparkles, Lock, History } from "lucide-react";
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  
   // State Management
   const [stage, setStage] = useState("mode"); // mode, source, upload, ai-generate, lobby, quiz, waiting, results
   const [quiz, setQuiz] = useState(null);
@@ -235,8 +241,13 @@ export default function Home() {
       // Solo: go to source selection
       setStage("source");
     } else {
-      // Multiplayer: show create/join options
-      setShowNamePrompt(true);
+      // Multiplayer: automatically use Google account name
+      if (session?.user?.name) {
+        setPlayerName(session.user.name);
+        setShowNamePrompt(true);
+      } else {
+        alert("Please sign in to play multiplayer mode");
+      }
     }
   };
 
@@ -250,11 +261,15 @@ export default function Home() {
   };
 
   const handleCreateRoom = () => {
-    if (!playerName.trim()) {
+    // Use session user's name automatically
+    const name = session?.user?.name || playerName.trim();
+    
+    if (!name) {
       alert("Please enter your name");
       return;
     }
 
+    setPlayerName(name);
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     setIsHost(true);
     setRoomCode(code);
@@ -264,14 +279,18 @@ export default function Home() {
   };
 
   const handleJoinRoom = () => {
-    if (!playerName.trim() || !joinRoomCode.trim()) {
+    // Use session user's name automatically
+    const name = session?.user?.name || playerName.trim();
+    
+    if (!name || !joinRoomCode.trim()) {
       alert("Please enter your name and room code");
       return;
     }
 
+    setPlayerName(name);
     socket.emit("join-room", {
       roomCode: joinRoomCode.toUpperCase(),
-      playerName,
+      playerName: name,
     });
     setRoomCode(joinRoomCode.toUpperCase());
     setIsHost(false);
@@ -360,14 +379,28 @@ export default function Home() {
                 <p className="text-xs text-gray-600">Powered by DeepSeek AI</p>
               </div>
             </div>
-            {stage !== "upload" && (
-              <button
-                onClick={resetGame}
-                className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
-              >
-                New Quiz
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              <GoogleAuthButton />
+              {session && (
+                <>
+                  <button
+                    onClick={() => router.push("/history")}
+                    className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center gap-2"
+                  >
+                    <History className="w-4 h-4" />
+                    <span className="hidden sm:inline">History</span>
+                  </button>
+                  {stage !== "upload" && (
+                    <button
+                      onClick={resetGame}
+                      className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                    >
+                      New Quiz
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -439,6 +472,9 @@ export default function Home() {
                 leaderboard={leaderboard}
                 playerName={playerName}
                 onPlayAgain={resetGame}
+                mode={mode}
+                roomCode={roomCode}
+                metadata={metadata}
               />
             </motion.div>
           )}
@@ -457,13 +493,33 @@ export default function Home() {
               Choose Your Path
             </h3>
 
+            {session?.user && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Playing as:</p>
+                <div className="flex items-center gap-2">
+                  {session.user.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  )}
+                  <span className="font-semibold text-gray-800">
+                    {session.user.name}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4 mb-6">
               <input
                 type="text"
                 placeholder="Enter your name"
-                value={playerName}
+                value={session?.user?.name || playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                disabled={!!session?.user?.name}
               />
             </div>
 
@@ -510,13 +566,33 @@ export default function Home() {
               Join Quiz Room
             </h3>
 
+            {session?.user && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Playing as:</p>
+                <div className="flex items-center gap-2">
+                  {session.user.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  )}
+                  <span className="font-semibold text-gray-800">
+                    {session.user.name}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4 mb-6">
               <input
                 type="text"
                 placeholder="Enter your name"
-                value={playerName}
+                value={session?.user?.name || playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
+                disabled={!!session?.user?.name}
               />
               <input
                 type="text"
