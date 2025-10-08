@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import {
@@ -12,6 +12,8 @@ import {
   Home,
   Clock,
   Target,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export default function QuizResults({
@@ -26,6 +28,7 @@ export default function QuizResults({
 }) {
   const { data: session } = useSession();
   const hasSavedRef = useRef(false); // Track if we've already saved
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   // Find current player's data in multiplayer mode
   const getCurrentPlayerData = () => {
@@ -258,9 +261,10 @@ export default function QuizResults({
           </div>
         )}
 
-        {/* Answer Review */}
-        <div className="space-y-6">
-          {quiz.map((question, index) => {
+        {/* Answer Review with Pagination */}
+        <div className="mb-8">
+          {(() => {
+            const question = quiz[currentQuestionIndex];
             let userAnswerText;
             let isCorrect;
 
@@ -271,12 +275,12 @@ export default function QuizResults({
               userAnswerText = answerObj?.selectedAnswerText;
               isCorrect = answerObj?.isCorrect;
             } else if (leaderboard && !currentPlayerData) {
-              userAnswerText = userAnswers[index];
+              userAnswerText = userAnswers[currentQuestionIndex];
               const correctAnswerText =
                 question.options[question.correctAnswer];
               isCorrect = userAnswerText === correctAnswerText;
             } else {
-              userAnswerText = userAnswers[index];
+              userAnswerText = userAnswers[currentQuestionIndex];
               const correctAnswerText =
                 question.options[question.correctAnswer];
               isCorrect = userAnswerText === correctAnswerText;
@@ -285,81 +289,95 @@ export default function QuizResults({
             const correctAnswerText = question.options[question.correctAnswer];
 
             return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="rounded-lg border border-slate-200/80 bg-white/50"
-              >
-                {/* Question */}
-                <div className="p-6">
-                  <p className="mb-1 text-sm font-medium text-slate-500">
-                    Question {index + 1}
-                  </p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {question.question}
-                  </p>
-                </div>
+              <div className="bg-white rounded-xl shadow-md p-6 md:p-8">
+                <div className="space-y-8">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-800 mb-4">
+                      {currentQuestionIndex + 1}. {question.question}
+                    </p>
 
-                {/* Answer Section */}
-                {isCorrect ? (
-                  <div className="rounded-b-lg border-t border-slate-200/80 bg-green-500/10 px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-green-700">Your Answer</p>
-                        <p className="font-medium text-green-900">
-                          {userAnswerText}
-                        </p>
-                      </div>
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
-                        <CheckCircle className="w-5 h-5" />
-                      </div>
+                    <div className="space-y-3">
+                      {!isCorrect && (
+                        <>
+                          {/* Wrong Answer */}
+                          <div className="flex items-start gap-4 p-4 rounded-lg bg-red-100 border border-red-200">
+                            <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+                            <div>
+                              <p className="font-medium text-red-800">
+                                Your Answer
+                              </p>
+                              <p className="text-slate-700">{userAnswerText}</p>
+                            </div>
+                          </div>
+                          {/* Correct Answer */}
+                          <div className="flex items-start gap-4 p-4 rounded-lg bg-green-100 border border-green-200">
+                            <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                            <div>
+                              <p className="font-medium text-green-800">
+                                Correct Answer
+                              </p>
+                              <p className="text-slate-700">
+                                {correctAnswerText}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {isCorrect && (
+                        <div className="flex items-start gap-4 p-4 rounded-lg bg-green-100 border border-green-200">
+                          <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="font-medium text-green-800">
+                              Your Answer (Correct)
+                            </p>
+                            <p className="text-slate-700">{userAnswerText}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Explanation */}
+                      {question.explanation && (
+                        <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-sm font-medium text-slate-700 mb-1">
+                            Explanation:
+                          </p>
+                          <p className="text-sm text-slate-600 italic">
+                            {question.explanation}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    {question.explanation && (
-                      <p className="mt-3 text-sm text-slate-600 italic">
-                        {question.explanation}
-                      </p>
-                    )}
                   </div>
-                ) : (
-                  <div className="space-y-4 rounded-b-lg border-t border-slate-200/80 px-6 py-4">
-                    {/* Wrong Answer */}
-                    <div className="flex items-center justify-between rounded-md bg-red-500/10 p-3">
-                      <div>
-                        <p className="text-sm text-red-700">
-                          Your Answer (Incorrect)
-                        </p>
-                        <p className="font-medium text-red-900 line-through">
-                          {userAnswerText}
-                        </p>
-                      </div>
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white">
-                        <XCircle className="w-5 h-5" />
-                      </div>
-                    </div>
-                    {/* Correct Answer */}
-                    <div className="flex items-center justify-between rounded-md bg-green-500/10 p-3">
-                      <div>
-                        <p className="text-sm text-green-700">Correct Answer</p>
-                        <p className="font-medium text-green-900">
-                          {correctAnswerText}
-                        </p>
-                      </div>
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
-                        <CheckCircle className="w-5 h-5" />
-                      </div>
-                    </div>
-                    {question.explanation && (
-                      <p className="text-sm text-slate-600 italic">
-                        {question.explanation}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </motion.div>
+                </div>
+              </div>
             );
-          })}
+          })()}
+
+          {/* Navigation Controls */}
+          <div className="mt-8 pt-6 border-t border-slate-200 flex justify-between items-center">
+            <button
+              onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
+              disabled={currentQuestionIndex === 0}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </button>
+
+            <span className="text-sm text-slate-500">
+              Question {currentQuestionIndex + 1} of {quiz.length}
+            </span>
+
+            <button
+              onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+              disabled={currentQuestionIndex === quiz.length - 1}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Back to Dashboard Button */}

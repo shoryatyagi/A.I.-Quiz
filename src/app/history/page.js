@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import Loader from "@/components/Loader";
 
 export default function HistoryPage() {
   const { data: session, status } = useSession();
@@ -117,14 +118,7 @@ export default function HistoryPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background-light flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your quiz history...</p>
-        </div>
-      </div>
-    );
+    return <Loader message="Loading your quiz history" />;
   }
 
   // Show quiz details view
@@ -432,7 +426,14 @@ export default function HistoryPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button
-                            onClick={() => fetchQuizDetails(quiz._id)}
+                            onClick={() => {
+                              const encodedName = encodeURIComponent(
+                                quiz.quizTitle
+                              );
+                              router.push(
+                                `/history/${quiz._id}?name=${encodedName}`
+                              );
+                            }}
                             className="text-primary hover:underline font-medium transition-all duration-200 hover:scale-105 transform inline-block cursor-pointer"
                           >
                             View Details

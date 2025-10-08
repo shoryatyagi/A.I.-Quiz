@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import PDFUploader from "./PDFUploader";
 import AIQuizGenerator from "./AIQuizGenerator";
 
-export default function QuizCreator({ onQuizGenerated }) {
+export default function QuizCreator({ onQuizGenerated, onBack }) {
   const [activeTab, setActiveTab] = useState("pdf"); // 'pdf' or 'ai'
 
   const handleTabChange = (tab) => {
@@ -15,6 +16,17 @@ export default function QuizCreator({ onQuizGenerated }) {
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-3xl mx-auto">
+        {/* Back Button */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="mb-6 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#135bec] transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </button>
+        )}
+
         <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           Create a New Quiz
         </h2>

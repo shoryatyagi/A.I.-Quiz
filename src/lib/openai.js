@@ -1,11 +1,12 @@
 import OpenAI from "openai";
 
 export const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
+  baseURL: "https://openrouter.ai/api/v1", // ✅ FIXED
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {
-    "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL,
-    "X-Title": process.env.NEXT_PUBLIC_SITE_NAME,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    "X-Title": process.env.NEXT_PUBLIC_SITE_NAME || "Quiz Generator App",
   },
 });
 
@@ -32,22 +33,81 @@ Return ONLY a JSON array in this exact format:
   }
 ]`;
 
-    const completion = await openai.chat.completions.create({
-      model: "deepseek/deepseek-chat-v3.1:free",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful quiz generator that creates educational multiple-choice questions. Always return valid JSON arrays only.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 4000,
-    });
+    let completion;
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    while (retryCount <= maxRetries) {
+      try {
+        completion = await openai.chat.completions.create({
+          model: "openrouter/auto",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a helpful quiz generator that creates educational multiple-choice questions. Always return valid JSON arrays only.",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 4000,
+        });
+
+        // If successful, break out of retry loop
+        break;
+      } catch (apiError) {
+        console.error(
+          `❌ OpenRouter API Error (attempt ${retryCount + 1}/${
+            maxRetries + 1
+          }):`,
+          apiError
+        );
+
+        // Check for specific error types
+        if (apiError.message && apiError.message.includes("404")) {
+          throw new Error(
+            "Free model access blocked. Please go to https://openrouter.ai/settings/privacy and enable free model usage by allowing your data to be used for training."
+          );
+        }
+
+        // Check for 502 upstream errors
+        if (
+          apiError.status === 502 ||
+          (apiError.message && apiError.message.includes("502"))
+        ) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(
+              `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
+                maxRetries + 1
+              })`
+            );
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            continue;
+          } else {
+            throw new Error(
+              "The AI model is temporarily unavailable (upstream server error). Please try again in a few moments, or contact support if the issue persists."
+            );
+          }
+        }
+
+        // For other errors, throw immediately
+        throw new Error(`API Error: ${apiError.message}`);
+      }
+    }
+
+    // Add error checking
+    console.log("API Response:", JSON.stringify(completion, null, 2));
+
+    if (!completion || !completion.choices || completion.choices.length === 0) {
+      console.error("Invalid API response:", completion);
+      throw new Error(
+        "No response from AI model. Please check your API settings."
+      );
+    }
 
     const responseText = completion.choices[0].message.content.trim();
 
@@ -103,6 +163,28 @@ export const generateQuizFromPrompt = async (
   difficulty = "medium"
 ) => {
   try {
+    // Clean the topic to remove common instruction phrases
+    // Users now enter the topic separately from the number field,
+    // but we still handle cases where they write "create a quiz on X" or "quiz about X"
+    let cleanedTopic = topic
+      .replace(
+        /^\s*(make|generate|create)\s+(a\s+)?(quiz|test)\s+(on|about|for|regarding)\s*/gi,
+        ""
+      )
+      .replace(/^\s*(quiz|test)\s+(on|about|for|regarding)\s*/gi, "")
+      .trim();
+
+    // If the cleaned topic is empty, use the original
+    if (!cleanedTopic) {
+      cleanedTopic = topic;
+    }
+
+    console.log(`📝 Original topic: "${topic}"`);
+    console.log(`🎯 Cleaned topic: "${cleanedTopic}"`);
+    console.log(
+      `📊 Generating ${numberOfQuestions} questions at ${difficulty} difficulty`
+    );
+
     const difficultyInstructions = {
       easy: "Create basic, fundamental questions suitable for beginners. Focus on definitions, simple facts, and core concepts.",
       medium:
@@ -110,19 +192,21 @@ export const generateQuizFromPrompt = async (
       hard: "Create advanced, challenging questions that require deep understanding, analysis, and critical thinking. Include complex scenarios.",
     };
 
-    const prompt = `You are an expert quiz generator. Create exactly ${numberOfQuestions} multiple-choice questions about "${topic}".
+    const prompt = `You are an expert quiz generator. Create exactly ${numberOfQuestions} multiple-choice questions about: "${cleanedTopic}"
+
+IMPORTANT: Create questions specifically about the subject "${cleanedTopic}" - NOT about creating quizzes or the number of questions.
 
 Difficulty Level: ${difficulty.toUpperCase()}
 ${difficultyInstructions[difficulty]}
 
 Requirements for each question:
-- Clear, specific question about ${topic}
+- Clear, specific question about ${cleanedTopic}
 - Four answer options (make them plausible but distinguishable)
 - One correct answer
 - Brief explanation (2-3 sentences) of why it's correct
 
 Ensure questions:
-- Cover different aspects of ${topic}
+- Cover different aspects of ${cleanedTopic}
 - Are ${difficulty} difficulty level
 - Are fact-based and accurate
 - Have clear, unambiguous correct answers
@@ -143,22 +227,81 @@ IMPORTANT:
 - Escape any quotes inside strings with backslash
 - Return ONLY the JSON array, nothing else`;
 
-    const completion = await openai.chat.completions.create({
-      model: "deepseek/deepseek-chat-v3.1:free",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert educational quiz generator. Create high-quality, accurate multiple-choice questions. ALWAYS return ONLY valid JSON arrays with NO markdown, NO explanations, NO additional text. Ensure proper JSON formatting with no trailing commas.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 4000,
-    });
+    let completion;
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    while (retryCount <= maxRetries) {
+      try {
+        completion = await openai.chat.completions.create({
+          model: "deepseek/deepseek-chat-v3.1:free",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an expert educational quiz generator. Create high-quality, accurate multiple-choice questions. ALWAYS return ONLY valid JSON arrays with NO markdown, NO explanations, NO additional text. Ensure proper JSON formatting with no trailing commas.",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.8,
+          max_tokens: 4000,
+        });
+
+        // If successful, break out of retry loop
+        break;
+      } catch (apiError) {
+        console.error(
+          `❌ OpenRouter API Error (attempt ${retryCount + 1}/${
+            maxRetries + 1
+          }):`,
+          apiError
+        );
+
+        // Check for specific error types
+        if (apiError.message && apiError.message.includes("404")) {
+          throw new Error(
+            "Free model access blocked. Please go to https://openrouter.ai/settings/privacy and enable free model usage by allowing your data to be used for training."
+          );
+        }
+
+        // Check for 502 upstream errors
+        if (
+          apiError.status === 502 ||
+          (apiError.message && apiError.message.includes("502"))
+        ) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(
+              `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
+                maxRetries + 1
+              })`
+            );
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            continue;
+          } else {
+            throw new Error(
+              "The AI model is temporarily unavailable (upstream server error). Please try again in a few moments, or contact support if the issue persists."
+            );
+          }
+        }
+
+        // For other errors, throw immediately
+        throw new Error(`API Error: ${apiError.message}`);
+      }
+    }
+
+    // Add error checking
+    console.log("API Response:", JSON.stringify(completion, null, 2));
+
+    if (!completion || !completion.choices || completion.choices.length === 0) {
+      console.error("Invalid API response:", completion);
+      throw new Error(
+        "No response from AI model. Please check your API settings."
+      );
+    }
 
     let responseText = completion.choices[0].message.content.trim();
 

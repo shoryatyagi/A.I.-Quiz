@@ -3,8 +3,15 @@
 import { motion } from "framer-motion";
 import { User, Users } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
-export default function LandingPage({ onSelectMode, isAuthenticated = false }) {
+export default function LandingPage({ isAuthenticated = false }) {
+  const router = useRouter();
+
+  const handleSelectMode = (mode) => {
+    router.push(`/${mode}/`);
+  };
+
   return (
     <main className="flex-grow flex items-center">
       <div className="container mx-auto px-6 py-16 text-center">
@@ -39,7 +46,7 @@ export default function LandingPage({ onSelectMode, isAuthenticated = false }) {
               className="mt-4 text-base md:text-lg text-white/90"
             >
               Transform your documents or ideas into engaging quizzes with
-              QuizGenius. Choose your game mode to get started.
+              QuizMaster. Choose your game mode to get started.
             </motion.p>
 
             <motion.div
@@ -49,7 +56,7 @@ export default function LandingPage({ onSelectMode, isAuthenticated = false }) {
               className="mt-8 flex flex-wrap justify-center gap-4"
             >
               <button
-                onClick={() => onSelectMode("solo")}
+                onClick={() => handleSelectMode("solo")}
                 className="bg-primary text-white font-bold px-8 py-4 rounded-lg text-base hover:bg-primary/90 transition-all duration-200 transform hover:scale-105 hover:shadow-xl flex items-center gap-3 cursor-pointer"
               >
                 <User className="h-6 w-6" />
@@ -62,7 +69,7 @@ export default function LandingPage({ onSelectMode, isAuthenticated = false }) {
               </button>
 
               <button
-                onClick={() => onSelectMode("multiplayer")}
+                onClick={() => handleSelectMode("multiplayer")}
                 className="bg-white/10 backdrop-blur-sm text-white font-bold px-8 py-4 rounded-lg text-base hover:bg-white/20 transition-all duration-200 transform hover:scale-105 hover:shadow-xl flex items-center gap-3 cursor-pointer"
               >
                 <Users className="h-6 w-6" />

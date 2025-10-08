@@ -79,41 +79,48 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
           className="block text-sm font-medium text-slate-700 mb-2"
           htmlFor="ai-prompt"
         >
-          AI Prompt
+          Topic / Description
         </label>
         <textarea
           id="ai-prompt"
           name="ai-prompt"
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          placeholder="e.g., 'Create a 10-question multiple-choice quiz about the history of the internet.'"
-          rows="6"
+          placeholder="e.g., 'Java programming language' or 'History of the internet' or 'Photosynthesis in plants'"
+          rows="4"
           className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] placeholder:text-slate-400 resize-none p-3 transition-all"
           disabled={loading}
         />
+        <p className="mt-1 text-xs text-slate-500">
+          Enter the topic you want to create a quiz about. Don&apos;t include
+          the number of questions here.
+        </p>
       </div>
 
       {/* Number of Questions */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
-          Number of Questions:{" "}
-          <span className="text-[#135bec] font-bold">{numberOfQuestions}</span>
+        <label
+          className="block text-sm font-medium text-slate-700 mb-2"
+          htmlFor="num-questions-ai"
+        >
+          Number of Questions
         </label>
         <input
-          type="range"
+          type="number"
+          id="num-questions-ai"
           min="5"
           max={MAX_QUESTIONS}
-          step="5"
           value={numberOfQuestions}
-          onChange={(e) => setNumberOfQuestions(parseInt(e.target.value))}
-          className="w-full"
+          onChange={(e) => {
+            const value = parseInt(e.target.value) || 5;
+            setNumberOfQuestions(Math.min(Math.max(value, 5), MAX_QUESTIONS));
+          }}
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] p-3 transition-all"
           disabled={loading}
         />
-        <div className="flex justify-between text-xs text-slate-500 mt-1">
-          <span>5</span>
-          <span>{Math.floor(MAX_QUESTIONS * 0.5)}</span>
-          <span>{MAX_QUESTIONS}</span>
-        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Choose between 5 and {MAX_QUESTIONS} questions
+        </p>
       </div>
 
       {/* Difficulty Level */}

@@ -3,9 +3,9 @@ import SessionProvider from "@/components/SessionProvider";
 import Navbar from "@/components/Navbar";
 
 export const metadata = {
-  title: "QuizGenius - AI-Driven Quizzes",
+  title: "QuizMaster - AI-Driven Quizzes",
   description:
-    "Transform your documents or ideas into engaging quizzes with QuizGenius. Upload a PDF or enter an AI prompt to get started.",
+    "Transform your documents or ideas into engaging quizzes with QuizMaster. Upload a PDF or enter an AI prompt to get started.",
 };
 
 export default function RootLayout({ children }) {
@@ -19,7 +19,7 @@ export default function RootLayout({ children }) {
             <div className="container mx-auto px-6 py-8">
               <div className="flex flex-col md:flex-row items-center justify-between">
                 <p className="text-sm text-gray-500">
-                  © 2024 QuizGenius. All rights reserved.
+                  © 2024 QuizMaster. All rights reserved.
                 </p>
                 <div className="flex items-center gap-6 mt-4 md:mt-0">
                   <a

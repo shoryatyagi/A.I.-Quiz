@@ -92,7 +92,10 @@ export default function PDFUploader({ onQuizGenerated }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Quiz Name Input */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2" htmlFor="quiz-name">
+        <label
+          className="block text-sm font-medium text-slate-700 mb-2"
+          htmlFor="quiz-name"
+        >
           Quiz Name
         </label>
         <input
@@ -153,26 +156,30 @@ export default function PDFUploader({ onQuizGenerated }) {
         )}
       </div>
 
-      {/* Number of Questions Slider */}
+      {/* Number of Questions */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
-          Number of Questions:{" "}
-          <span className="text-[#135bec] font-bold">{numberOfQuestions}</span>
+        <label
+          className="block text-sm font-medium text-slate-700 mb-2"
+          htmlFor="num-questions-pdf"
+        >
+          Number of Questions
         </label>
         <input
-          type="range"
+          type="number"
+          id="num-questions-pdf"
           min="5"
           max={MAX_QUESTIONS}
-          step="5"
           value={numberOfQuestions}
-          onChange={(e) => setNumberOfQuestions(parseInt(e.target.value))}
-          className="w-full"
+          onChange={(e) => {
+            const value = parseInt(e.target.value) || 5;
+            setNumberOfQuestions(Math.min(Math.max(value, 5), MAX_QUESTIONS));
+          }}
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] p-3 transition-all"
+          disabled={loading}
         />
-        <div className="flex justify-between text-xs text-slate-500 mt-1">
-          <span>5</span>
-          <span>{Math.floor(MAX_QUESTIONS * 0.5)}</span>
-          <span>{MAX_QUESTIONS}</span>
-        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Choose between 5 and {MAX_QUESTIONS} questions
+        </p>
       </div>
 
       {/* Error Message */}
