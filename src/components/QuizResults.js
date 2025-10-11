@@ -19,6 +19,7 @@ import {
 export default function QuizResults({
   quiz,
   userAnswers,
+  answerTimes = [], // Time spent on each question (solo mode)
   leaderboard = null,
   playerName = "",
   onPlayAgain,
@@ -29,6 +30,8 @@ export default function QuizResults({
   const { data: session } = useSession();
   const hasSavedRef = useRef(false); // Track if we've already saved
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentLeaderboardPage, setCurrentLeaderboardPage] = useState(0);
+  const PLAYERS_PER_PAGE = 10; // Show 10 players per page
 
   // Find current player's data in multiplayer mode
   const getCurrentPlayerData = () => {
@@ -78,9 +81,33 @@ export default function QuizResults({
     return `${seconds}s`;
   };
 
+  const getTotalTime = () => {
+    if (leaderboard && currentPlayerData) {
+      // For multiplayer, get current player's total time
+      return currentPlayerData.totalTime || 0;
+    }
+    // For solo mode, calculate total time from answerTimes array
+    if (mode === "solo" && answerTimes.length > 0) {
+      return answerTimes.reduce((total, time) => total + time, 0);
+    }
+    return 0;
+  };
+
   const score = calculateScore();
   const totalQuestions = quiz.length;
   const percentage = Math.round((score / totalQuestions) * 100);
+  const totalTime = getTotalTime();
+
+  // Get current player's rank
+  const getCurrentPlayerRank = () => {
+    if (!leaderboard || !currentPlayerData) return null;
+    return (
+      currentPlayerData.rank ||
+      leaderboard.findIndex((p) => p.name === playerName) + 1
+    );
+  };
+
+  const playerRank = getCurrentPlayerRank();
 
   // Save quiz history to MongoDB when results are shown (only once)
   useEffect(() => {
@@ -135,7 +162,7 @@ export default function QuizResults({
         score: score,
         totalQuestions: totalQuestions,
         percentage: percentage,
-        totalTime: leaderboard && leaderboard[0] ? leaderboard[0].totalTime : 0,
+        totalTime: totalTime,
         questions: questionsData,
         metadata: metadata,
         leaderboard: leaderboard,
@@ -197,11 +224,47 @@ export default function QuizResults({
 
         {/* Score Display */}
         <div className="mb-12 flex justify-center">
-          <div className="flex items-center gap-4 rounded-xl bg-[#135bec]/10 p-6">
-            <p className="text-lg font-medium text-[#135bec]">Your Score</p>
-            <p className="text-4xl font-bold text-[#135bec]">
-              {score}/{totalQuestions}
-            </p>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {playerRank && (
+              <div className="flex items-center gap-4 rounded-xl bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 p-6">
+                {playerRank === 1 ? (
+                  <Trophy className="w-8 h-8 text-yellow-500" />
+                ) : playerRank === 2 ? (
+                  <Medal className="w-8 h-8 text-slate-400" />
+                ) : playerRank === 3 ? (
+                  <Award className="w-8 h-8 text-orange-600" />
+                ) : (
+                  <Target className="w-8 h-8 text-[#135bec]" />
+                )}
+                <div>
+                  <p className="text-sm font-medium text-slate-600">
+                    Your Rank
+                  </p>
+                  <p className="text-4xl font-bold text-slate-900">
+                    #{playerRank}
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-4 rounded-xl bg-[#135bec]/10 p-6">
+              <p className="text-lg font-medium text-[#135bec]">Your Score</p>
+              <p className="text-4xl font-bold text-[#135bec]">
+                {score}/{totalQuestions}
+              </p>
+            </div>
+            {totalTime > 0 && (
+              <div className="flex items-center gap-4 rounded-xl bg-[#135bec]/10 p-6">
+                <Clock className="w-6 h-6 text-[#135bec]" />
+                <div>
+                  <p className="text-sm font-medium text-[#135bec]">
+                    Total Time
+                  </p>
+                  <p className="text-2xl font-bold text-[#135bec]">
+                    {formatTime(totalTime)}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -213,50 +276,128 @@ export default function QuizResults({
               Leaderboard
             </h3>
             <div className="space-y-3">
-              {leaderboard.map((player, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`p-4 rounded-lg flex items-center gap-4 ${
-                    index === 0
-                      ? "bg-yellow-50 border-2 border-yellow-300"
-                      : "bg-slate-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-center w-10 h-10">
-                    {index === 0 ? (
-                      <Trophy className="w-7 h-7 text-yellow-500" />
-                    ) : index === 1 ? (
-                      <Medal className="w-7 h-7 text-slate-400" />
-                    ) : index === 2 ? (
-                      <Award className="w-7 h-7 text-orange-600" />
-                    ) : (
-                      <span className="text-xl font-bold text-slate-600">
-                        #{index + 1}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-lg text-slate-800">
-                      {player.name}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-slate-600">
-                      <div className="flex items-center gap-1">
-                        <Target className="w-4 h-4" />
-                        <span>
-                          {player.correctAnswers}/{totalQuestions}
+              {(() => {
+                const startIndex = currentLeaderboardPage * PLAYERS_PER_PAGE;
+                const endIndex = startIndex + PLAYERS_PER_PAGE;
+                const playersToShow = leaderboard.slice(startIndex, endIndex);
+                const totalPages = Math.ceil(
+                  leaderboard.length / PLAYERS_PER_PAGE
+                );
+
+                return (
+                  <>
+                    {playersToShow.map((player, relativeIndex) => {
+                      const index = startIndex + relativeIndex;
+                      const rank = player.rank || index + 1;
+                      const isCurrentPlayer = player.name === playerName;
+
+                      return (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: relativeIndex * 0.1 }}
+                          className={`p-4 rounded-lg flex items-center gap-4 ${
+                            rank === 1
+                              ? "bg-yellow-50 border-2 border-yellow-300"
+                              : rank === 2
+                              ? "bg-slate-100 border-2 border-slate-300"
+                              : rank === 3
+                              ? "bg-orange-50 border-2 border-orange-300"
+                              : isCurrentPlayer
+                              ? "bg-[#135bec]/5 border-2 border-[#135bec]/30"
+                              : "bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-center w-12 h-12">
+                            {rank === 1 ? (
+                              <Trophy className="w-8 h-8 text-yellow-500" />
+                            ) : rank === 2 ? (
+                              <Medal className="w-8 h-8 text-slate-400" />
+                            ) : rank === 3 ? (
+                              <Award className="w-8 h-8 text-orange-600" />
+                            ) : (
+                              <div className="flex items-center justify-center w-10 h-10 bg-slate-200 rounded-full">
+                                <span className="text-lg font-bold text-slate-600">
+                                  {rank}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-slate-500 min-w-[2rem]">
+                                #{rank}
+                              </span>
+                              <span className="font-bold text-lg text-slate-800">
+                                {player.name}
+                              </span>
+                              {isCurrentPlayer && (
+                                <span className="text-xs font-semibold text-[#135bec] bg-[#135bec]/10 px-2 py-1 rounded-full">
+                                  You
+                                </span>
+                              )}
+                              {rank === 1 && (
+                                <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">
+                                  Winner
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-slate-600 mt-1">
+                              <div className="flex items-center gap-1">
+                                <Target className="w-4 h-4" />
+                                <span className="font-medium">
+                                  {player.correctAnswers}/{totalQuestions}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                <span>{formatTime(player.totalTime)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+
+                    {/* Leaderboard Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center">
+                        <button
+                          onClick={() =>
+                            setCurrentLeaderboardPage(
+                              currentLeaderboardPage - 1
+                            )
+                          }
+                          disabled={currentLeaderboardPage === 0}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          Previous
+                        </button>
+
+                        <span className="text-sm text-slate-500">
+                          Page {currentLeaderboardPage + 1} of {totalPages} (
+                          {leaderboard.length} players)
                         </span>
+
+                        <button
+                          onClick={() =>
+                            setCurrentLeaderboardPage(
+                              currentLeaderboardPage + 1
+                            )
+                          }
+                          disabled={currentLeaderboardPage === totalPages - 1}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{formatTime(player.totalTime)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

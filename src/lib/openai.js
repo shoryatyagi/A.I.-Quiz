@@ -40,7 +40,7 @@ Return ONLY a JSON array in this exact format:
     while (retryCount <= maxRetries) {
       try {
         completion = await openai.chat.completions.create({
-          model: "openrouter/auto",
+          model: "deepseek/deepseek-chat-v3.1:free",
           messages: [
             {
               role: "system",
@@ -118,6 +118,13 @@ Return ONLY a JSON array in this exact format:
     } else if (responseText.includes("```")) {
       jsonText = responseText.split("```")[1].split("```")[0].trim();
     }
+
+    // Remove any special tokens or garbage at the end (like <｜begin▁of▁sentence｜>)
+    jsonText = jsonText
+      .replace(/<[^>]*>/g, "") // Remove any HTML-like tags
+      .replace(/｜[^｜]*｜/g, "") // Remove special token patterns
+      .replace(/\s*<｜.*$/g, "") // Remove anything starting with <｜
+      .trim();
 
     const questions = JSON.parse(jsonText);
 
@@ -317,6 +324,13 @@ IMPORTANT:
     } else if (responseText.includes("```")) {
       jsonText = responseText.split("```")[1].split("```")[0].trim();
     }
+
+    // Remove any special tokens or garbage at the end (like <｜begin▁of▁sentence｜>)
+    jsonText = jsonText
+      .replace(/<[^>]*>/g, "") // Remove any HTML-like tags
+      .replace(/｜[^｜]*｜/g, "") // Remove special token patterns
+      .replace(/\s*<｜.*$/g, "") // Remove anything starting with <｜
+      .trim();
 
     // Clean up common JSON issues
     jsonText = jsonText

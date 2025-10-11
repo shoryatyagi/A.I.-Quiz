@@ -85,15 +85,21 @@ app.prepare().then(() => {
 
     socket.on("join-room", async ({ roomCode, playerName }) => {
       try {
+        console.log(
+          `🔄 Player "${playerName}" attempting to join room: ${roomCode}`
+        );
+
         const rooms = await getRoomsCollection();
         const room = await rooms.findOne({ roomCode });
 
         if (!room) {
+          console.error(`❌ Room not found: ${roomCode}`);
           socket.emit("error", { message: "Room not found" });
           return;
         }
 
         if (room.started) {
+          console.error(`❌ Room ${roomCode} already started`);
           socket.emit("error", { message: "Quiz already started" });
           return;
         }
@@ -114,7 +120,19 @@ app.prepare().then(() => {
         const updatedRoom = await rooms.findOne({ roomCode });
         const playerList = updatedRoom.players.map((p) => p.name);
 
-        io.to(roomCode).emit("player-joined", {
+        console.log(
+          `✅ ${playerName} joined room: ${roomCode}. Players:`,
+          playerList
+        );
+
+        // Emit to the joining player that they successfully joined
+        socket.emit("joined-room", {
+          roomCode,
+          players: playerList,
+        });
+
+        // Notify all other players in the room
+        socket.to(roomCode).emit("player-joined", {
           playerName,
           players: playerList,
           totalPlayers: updatedRoom.players.length,
@@ -124,6 +142,73 @@ app.prepare().then(() => {
       } catch (error) {
         console.error("Error joining room:", error);
         socket.emit("error", { message: "Failed to join room" });
+      }
+    });
+
+    socket.on("remove-player", async ({ roomCode, playerName }) => {
+      try {
+        console.log(`🚫 Host requesting to remove player: ${playerName} from room: ${roomCode}`);
+
+        const rooms = await getRoomsCollection();
+        const room = await rooms.findOne({ roomCode });
+
+        if (!room) {
+          socket.emit("error", { message: "Room not found" });
+          return;
+        }
+
+        // Verify that the requester is the host
+        if (room.host !== socket.id) {
+          socket.emit("error", { message: "Only host can remove players" });
+          return;
+        }
+
+        // Find the player to remove
+        const playerToRemove = room.players.find((p) => p.name === playerName);
+        if (!playerToRemove) {
+          socket.emit("error", { message: "Player not found in room" });
+          return;
+        }
+
+        // Prevent host from removing themselves
+        if (playerToRemove.socketId === socket.id) {
+          socket.emit("error", { message: "Host cannot remove themselves" });
+          return;
+        }
+
+        // Remove player from database
+        await rooms.updateOne(
+          { roomCode },
+          { $pull: { players: { name: playerName } } }
+        );
+
+        // Get updated room data
+        const updatedRoom = await rooms.findOne({ roomCode });
+        const playerList = updatedRoom.players.map((p) => p.name);
+
+        // Notify the kicked player
+        io.to(playerToRemove.socketId).emit("player-kicked", {
+          message: "You have been removed from the quiz by the host",
+        });
+
+        // Remove the player from the socket room
+        const kickedSocket = io.sockets.sockets.get(playerToRemove.socketId);
+        if (kickedSocket) {
+          kickedSocket.leave(roomCode);
+          socketRooms.delete(playerToRemove.socketId);
+        }
+
+        // Notify remaining players
+        io.to(roomCode).emit("player-removed", {
+          playerName,
+          players: playerList,
+          totalPlayers: updatedRoom.players.length,
+        });
+
+        console.log(`✅ Removed ${playerName} from room ${roomCode}. Remaining players:`, playerList);
+      } catch (error) {
+        console.error("Error removing player:", error);
+        socket.emit("error", { message: "Failed to remove player" });
       }
     });
 
@@ -173,22 +258,34 @@ app.prepare().then(() => {
         timeSpent,
       }) => {
         try {
+          console.log(
+            `📝 Answer submitted - Room: ${roomCode}, Q${
+              questionIndex + 1
+            }: "${selectedAnswerText}"`
+          );
+
           const rooms = await getRoomsCollection();
           const room = await rooms.findOne({ roomCode });
 
-          if (!room) return;
+          if (!room) {
+            console.error(`❌ Room not found: ${roomCode}`);
+            return;
+          }
 
           const playerIndex = room.players.findIndex(
             (p) => p.socketId === socket.id
           );
-          if (playerIndex === -1) return;
+          if (playerIndex === -1) {
+            console.error(`❌ Player not found in room: ${socket.id}`);
+            return;
+          }
 
           // Find the question in the ORIGINAL quiz by matching the question text
           // This works even when the client has a randomized question order
           const question = room.quiz.find((q) => q.question === questionText);
 
           if (!question) {
-            console.error(`Question not found: "${questionText}"`);
+            console.error(`❌ Question not found: "${questionText}"`);
             return;
           }
 
@@ -234,6 +331,10 @@ app.prepare().then(() => {
           const updatedRoom = await rooms.findOne({ roomCode });
           const player = updatedRoom.players[playerIndex];
 
+          console.log(
+            `📊 Player progress: ${player.answers.length}/${room.quiz.length} questions`
+          );
+
           if (player.answers.length === room.quiz.length) {
             // Player finished the quiz
             const correctAnswers = player.answers.filter(
@@ -241,6 +342,10 @@ app.prepare().then(() => {
             ).length;
             const totalTime = player.totalTime;
             const avgTime = totalTime / room.quiz.length;
+
+            console.log(
+              `🏁 Player finished! Score: ${correctAnswers}/${room.quiz.length}`
+            );
 
             socket.emit("player-finished", {
               correctAnswers,
@@ -255,6 +360,7 @@ app.prepare().then(() => {
             );
 
             if (allFinished) {
+              console.log(`🎉 All players finished in room ${roomCode}!`);
               // Calculate final leaderboard
               const leaderboard = updatedRoom.players
                 .map((p) => {
@@ -277,7 +383,20 @@ app.prepare().then(() => {
                   }
                   // Then by total time (less is better)
                   return a.totalTime - b.totalTime;
-                });
+                })
+                .map((player, index) => ({
+                  ...player,
+                  rank: index + 1, // Add rank position (1st, 2nd, 3rd, etc.)
+                }));
+
+              console.log(
+                "🏆 Leaderboard with ranks:",
+                leaderboard.map((p) => ({
+                  name: p.name,
+                  rank: p.rank,
+                  score: p.correctAnswers,
+                }))
+              );
 
               io.to(roomCode).emit("quiz-finished", {
                 leaderboard,
@@ -285,10 +404,42 @@ app.prepare().then(() => {
               });
 
               console.log(`Quiz finished in room: ${roomCode}`);
+
+              // Auto-delete room after 60 seconds (gives time to view results)
+              setTimeout(async () => {
+                try {
+                  const rooms = await getRoomsCollection();
+                  const deletedRoom = await rooms.findOne({ roomCode });
+
+                  if (deletedRoom) {
+                    await rooms.deleteOne({ roomCode });
+                    console.log(
+                      `🗑️ Room ${roomCode} auto-deleted 60s after quiz completion`
+                    );
+                  }
+                } catch (error) {
+                  console.error(
+                    `❌ Error auto-deleting room ${roomCode}:`,
+                    error
+                  );
+                }
+              }, 60000); // 60 seconds delay
+            } else {
+              // Not all players finished
+              console.log(`⏳ Waiting for other players in room ${roomCode}`);
+              console.log(
+                `📊 ${
+                  updatedRoom.players.filter(
+                    (p) => p.answers.length === room.quiz.length
+                  ).length
+                }/${updatedRoom.players.length} players finished`
+              );
+
+              // No need to emit anything - player-finished event already handled the waiting state
             }
           }
         } catch (error) {
-          console.error("Error submitting answer:", error);
+          console.error("❌ Error submitting answer:", error);
         }
       }
     );
@@ -330,7 +481,7 @@ app.prepare().then(() => {
             // Host disconnected - notify and delete room
             io.to(roomCode).emit("host-disconnected");
             await rooms.deleteOne({ roomCode });
-            console.log(`Room ${roomCode} closed (host disconnected)`);
+            console.log(`🗑️ Room ${roomCode} closed (host disconnected)`);
           } else if (player) {
             // Regular player disconnected - remove from room
             await rooms.updateOne(
@@ -344,6 +495,12 @@ app.prepare().then(() => {
                 playerName: player.name,
                 totalPlayers: updatedRoom.players.length,
               });
+
+              // Check if room is now empty (no players left)
+              if (updatedRoom.players.length === 0) {
+                await rooms.deleteOne({ roomCode });
+                console.log(`🗑️ Room ${roomCode} deleted (all players left)`);
+              }
             }
           }
         }

@@ -31,9 +31,14 @@ export default function MultiplayerLobby({
       setPlayers((prev) => prev.filter((p) => p !== playerName));
     });
 
+    socket.on("player-removed", ({ players: updatedPlayers }) => {
+      setPlayers(updatedPlayers);
+    });
+
     return () => {
       socket.off("player-joined");
       socket.off("player-left");
+      socket.off("player-removed");
     };
   }, [socket]);
 
@@ -67,8 +72,17 @@ export default function MultiplayerLobby({
   };
 
   const handleRemovePlayer = (playerName) => {
-    if (!isHost) return;
-    // Emit remove player event
+    console.log("🚫 Remove player clicked:", playerName);
+    console.log("Is host:", isHost);
+    console.log("Socket exists:", !!socket);
+    console.log("Room code:", roomCode);
+    
+    if (!isHost || !socket) {
+      console.log("❌ Cannot remove - isHost:", isHost, "socket:", !!socket);
+      return;
+    }
+    
+    console.log("✅ Emitting remove-player event");
     socket.emit("remove-player", { roomCode, playerName });
   };
 
@@ -135,8 +149,14 @@ export default function MultiplayerLobby({
                     </p>
                     {isHost && index !== 0 && (
                       <button
-                        onClick={() => handleRemovePlayer(player)}
-                        className="text-slate-500 hover:text-red-500 cursor-pointer transition-colors"
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemovePlayer(player);
+                        }}
+                        className="text-slate-500 hover:text-red-500 cursor-pointer transition-colors p-1 hover:bg-red-50 rounded"
+                        title={`Remove ${player}`}
                       >
                         <X className="w-4 h-4" />
                       </button>

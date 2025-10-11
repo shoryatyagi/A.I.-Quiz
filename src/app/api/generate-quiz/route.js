@@ -11,9 +11,10 @@ export async function POST(request) {
       return NextResponse.json({ error: "Topic is required" }, { status: 400 });
     }
 
-    if (numberOfQuestions < 5 || numberOfQuestions > 20) {
+    // Validate number of questions (minimum 5, no maximum)
+    if (numberOfQuestions < 5) {
       return NextResponse.json(
-        { error: "Number of questions must be between 5 and 20" },
+        { error: "Number of questions must be at least 5" },
         { status: 400 }
       );
     }

@@ -6,9 +6,10 @@ import { Clock } from "lucide-react";
 
 export default function QuizQuestion({
   question,
-  questionIndex,
+  questionNumber,
   totalQuestions,
   onAnswer,
+  mode,
   showFeedback = false,
 }) {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -18,11 +19,12 @@ export default function QuizQuestion({
 
   // Reset state when question changes
   useEffect(() => {
+    console.log("🔄 Question changed to:", questionNumber);
     setSelectedAnswer(null);
     setAnswered(false);
     setStartTime(Date.now());
     setTimeSpent(0);
-  }, [questionIndex]);
+  }, [questionNumber]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -35,10 +37,15 @@ export default function QuizQuestion({
   const handleAnswer = (answerIndex) => {
     if (answered) return;
 
+    console.log("✅ Answer clicked in QuizQuestion:", answerIndex);
+    console.log("📊 Question number:", questionNumber);
+    console.log("📊 Mode:", mode);
+
     setSelectedAnswer(answerIndex);
     setAnswered(true);
 
     // Call onAnswer callback which will handle navigation
+    console.log("📤 Calling onAnswer callback...");
     onAnswer(answerIndex, timeSpent);
   };
 
@@ -65,7 +72,7 @@ export default function QuizQuestion({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="text-sm font-semibold text-gray-600">
-            Question {questionIndex + 1} of {totalQuestions}
+            Question {questionNumber} of {totalQuestions}
           </div>
           <div className="flex items-center gap-2 text-gray-600">
             <Clock className="w-4 h-4" />
@@ -80,7 +87,7 @@ export default function QuizQuestion({
           <motion.div
             initial={{ width: 0 }}
             animate={{
-              width: `${((questionIndex + 1) / totalQuestions) * 100}%`,
+              width: `${(questionNumber / totalQuestions) * 100}%`,
             }}
             className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
           />

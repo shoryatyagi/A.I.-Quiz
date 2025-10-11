@@ -22,7 +22,7 @@ async function connectToDatabase() {
     await db.collection("rooms").createIndex({ roomCode: 1 }, { unique: true });
     await db
       .collection("rooms")
-      .createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 }); // Auto-delete after 1 hour
+      .createIndex({ createdAt: 1 }, { expireAfterSeconds: 86400 }); // Auto-delete after 24 hours (backup cleanup)
 
     // Create indexes for quiz history
     await db

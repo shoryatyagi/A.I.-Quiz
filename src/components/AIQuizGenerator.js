@@ -4,7 +4,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Loader2 } from "lucide-react";
 
-const MAX_QUESTIONS = parseInt(process.env.NEXT_PUBLIC_MAX_QUESTIONS_AI) || 20;
+// Minimum questions required is 5, no maximum limit
+const MIN_QUESTIONS = 5;
 
 export default function AIQuizGenerator({ onQuizGenerated }) {
   const [quizName, setQuizName] = useState("");
@@ -22,6 +23,14 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
       return;
     }
 
+    // Ensure numberOfQuestions is a valid number
+    const numQuestions = parseInt(numberOfQuestions) || MIN_QUESTIONS;
+    if (numQuestions < MIN_QUESTIONS) {
+      setError(`Please enter at least ${MIN_QUESTIONS} questions`);
+      setNumberOfQuestions(MIN_QUESTIONS);
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -34,7 +43,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
         body: JSON.stringify({
           quizName: quizName.trim(),
           topic: topic.trim(),
-          numberOfQuestions,
+          numberOfQuestions: numQuestions,
           difficulty,
         }),
       });
@@ -108,18 +117,33 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
         <input
           type="number"
           id="num-questions-ai"
-          min="5"
-          max={MAX_QUESTIONS}
+          min={MIN_QUESTIONS}
           value={numberOfQuestions}
           onChange={(e) => {
-            const value = parseInt(e.target.value) || 5;
-            setNumberOfQuestions(Math.min(Math.max(value, 5), MAX_QUESTIONS));
+            const value = e.target.value;
+            // Allow empty string while typing
+            if (value === "") {
+              setNumberOfQuestions("");
+              return;
+            }
+            // Parse and validate
+            const numValue = parseInt(value);
+            if (!isNaN(numValue)) {
+              setNumberOfQuestions(numValue);
+            }
+          }}
+          onBlur={(e) => {
+            // Ensure minimum value on blur
+            const value = parseInt(e.target.value);
+            if (isNaN(value) || value < MIN_QUESTIONS) {
+              setNumberOfQuestions(MIN_QUESTIONS);
+            }
           }}
           className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] p-3 transition-all"
           disabled={loading}
         />
         <p className="mt-1 text-xs text-slate-500">
-          Choose between 5 and {MAX_QUESTIONS} questions
+          Minimum {MIN_QUESTIONS} questions (no maximum)
         </p>
       </div>
 

@@ -13,6 +13,41 @@ import QuizResults from "@/components/QuizResults";
 import WaitingForResults from "@/components/WaitingForResults";
 import Loader from "@/components/Loader";
 
+// Helper function to shuffle an array (Fisher-Yates algorithm)
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Randomize quiz questions and options while preserving original question text and answer text
+function randomizeQuiz(questions) {
+  // First, shuffle the question order
+  const shuffledQuestions = shuffleArray(questions);
+
+  // Then, shuffle the options within each question, but keep track of the correct answer
+  return shuffledQuestions.map((question) => {
+    // Store the original correct answer text
+    const correctAnswerText = question.options[question.correctAnswer];
+
+    // Shuffle the options
+    const shuffledOptions = shuffleArray(question.options);
+
+    // Find the new index of the correct answer after shuffling
+    const newCorrectAnswerIndex = shuffledOptions.indexOf(correctAnswerText);
+
+    return {
+      ...question,
+      options: shuffledOptions,
+      correctAnswer: newCorrectAnswerIndex,
+      originalQuestion: question.question, // Keep original for server matching
+    };
+  });
+}
+
 export default function ModePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -37,12 +72,14 @@ export default function ModePage() {
   const [isHost, setIsHost] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]);
+  const [answerTimes, setAnswerTimes] = useState([]); // Track time spent on each question
   const [leaderboard, setLeaderboard] = useState(null);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [joinRoomCode, setJoinRoomCode] = useState("");
   const [showJoinPrompt, setShowJoinPrompt] = useState(false);
   const [playerStats, setPlayerStats] = useState(null);
   const [players, setPlayers] = useState([]);
+  const [questionStartTime, setQuestionStartTime] = useState(null); // Track when question started
 
   // Initialize Socket.IO for multiplayer
   useEffect(() => {
@@ -67,15 +104,175 @@ export default function ModePage() {
     });
 
     newSocket.on("connect", () => {
-      console.log("Connected to server:", newSocket.id);
+      console.log("✅ Connected to server. Socket ID:", newSocket.id);
+      console.log("Current mode:", mode);
     });
 
     newSocket.on("connect_error", (error) => {
-      console.error("Connection error:", error);
+      console.error("❌ Connection error:", error);
+    });
+
+    newSocket.on("disconnect", (reason) => {
+      console.log("🔌 Disconnected from server. Reason:", reason);
     });
 
     newSocket.on("error", ({ message }) => {
+      console.error("❌ Socket error event:", message);
       alert(message);
+    });
+
+    // ========================================
+    // ATTACH ALL EVENT LISTENERS IMMEDIATELY
+    // ========================================
+
+    newSocket.on("room-created", ({ roomCode: code, players: playerList }) => {
+      console.log("🏠 Room created:", code, "Players:", playerList);
+      console.log("Setting stage to lobby...");
+      setRoomCode(code);
+      setPlayers(playerList || []);
+      setStage("lobby");
+    });
+
+    newSocket.on(
+      "quiz-started",
+      ({
+        question,
+        currentQuestion: qIndex,
+        totalQuestions,
+        quiz: quizData,
+        metadata: quizMetadata,
+      }) => {
+        console.log("🎮 Quiz started! Total questions:", totalQuestions);
+        console.log(
+          "Quiz data received:",
+          quizData ? quizData.length : 0,
+          "questions"
+        );
+
+        // Randomize questions and options for each client
+        const randomizedQuiz = randomizeQuiz(
+          Array.isArray(quizData) ? quizData : quizData.questions || []
+        );
+
+        const quizObject = {
+          questions: randomizedQuiz,
+        };
+        setQuiz(quizObject);
+        setMetadata(quizMetadata);
+        setCurrentQuestion(qIndex);
+        setStage("quiz");
+        console.log("🔀 Quiz randomized and stage set to quiz");
+      }
+    );
+
+    newSocket.on("player-joined", ({ players: playerList }) => {
+      console.log("👥 Player joined, updated player list:", playerList);
+      setPlayers(playerList || []);
+    });
+
+    newSocket.on("player-left", ({ players: playerList }) => {
+      setPlayers(playerList || []);
+    });
+
+    newSocket.on("player-removed", ({ playerName, players: playerList }) => {
+      console.log(`🚫 Player removed: ${playerName}. Updated player list:`, playerList);
+      setPlayers(playerList || []);
+    });
+
+    newSocket.on("player-kicked", ({ message }) => {
+      console.log("❌ You have been kicked from the quiz:", message);
+      alert(message || "You have been removed from the quiz by the host");
+      // Reset to initial state
+      setStage("upload");
+      setRoomCode("");
+      setPlayers([]);
+      setIsHost(false);
+      newSocket.disconnect();
+    });
+
+    newSocket.on(
+      "next-question",
+      ({ question, currentQuestion: qIndex, totalQuestions }) => {
+        setCurrentQuestion(qIndex);
+      }
+    );
+
+    newSocket.on("quiz-completed", ({ leaderboard: lb }) => {
+      console.log("🏆 Quiz completed! Leaderboard:", lb);
+      setLeaderboard(lb);
+      setStage("results");
+    });
+
+    newSocket.on("quiz-finished", ({ leaderboard: lb }) => {
+      console.log("🏁 Quiz finished! Leaderboard:", lb);
+      setLeaderboard(lb);
+      setStage("results");
+    });
+
+    newSocket.on("waiting-for-others", ({ playerStats: stats }) => {
+      console.log("⏳ Waiting for other players:", stats);
+      // This event is now deprecated - player-finished handles everything
+      // Keeping listener for backwards compatibility but not updating state
+    });
+
+    newSocket.on("joined-room", ({ roomCode: code, players: playerList }) => {
+      console.log("🔥🔥🔥 JOINED-ROOM EVENT RECEIVED 🔥🔥🔥");
+      console.log("✅ Successfully joined room:", code, "Players:", playerList);
+      console.log("Setting room code:", code);
+      console.log("Setting players:", playerList);
+      console.log("Setting stage to lobby...");
+
+      // Force update with immediate logging
+      setRoomCode(code);
+      setPlayers(playerList || []);
+      setStage("lobby");
+
+      // Verify state update after a tick
+      setTimeout(() => {
+        console.log("🔍 After setState - Current stage should be lobby");
+      }, 100);
+    });
+
+    newSocket.on(
+      "player-finished",
+      ({ correctAnswers, totalQuestions, totalTime, avgTime }) => {
+        console.log("🏁 Player finished quiz:", {
+          correctAnswers,
+          totalQuestions,
+          totalTime,
+          avgTime,
+        });
+
+        // Set player stats so they can be displayed while waiting
+        setPlayerStats({
+          correctAnswers,
+          totalQuestions,
+          totalTime,
+          avgTime,
+        });
+
+        // Move to waiting stage
+        setStage("waiting");
+      }
+    );
+
+    newSocket.on(
+      "answer-submitted",
+      ({ isCorrect, correctAnswer, explanation }) => {
+        console.log("📝 Answer submitted:", { isCorrect, correctAnswer });
+      }
+    );
+
+    newSocket.on("error", ({ message }) => {
+      console.error("❌ Socket error:", message);
+      alert(message || "An error occurred");
+      if (
+        message.includes("Room not found") ||
+        message.includes("already started")
+      ) {
+        setShowJoinPrompt(false);
+        setShowNamePrompt(true);
+      }
     });
 
     setSocket(newSocket);
@@ -85,74 +282,25 @@ export default function ModePage() {
     };
   }, [mode]);
 
-  // Socket Event Listeners for Multiplayer
+  // Monitor stage changes
   useEffect(() => {
-    if (!socket || mode !== "multiplayer") return;
+    console.log("📍 STAGE CHANGED TO:", stage);
+    console.log("📍 Room Code:", roomCode);
+    console.log("📍 Players:", players);
+    console.log("📍 Is Host:", isHost);
 
-    socket.on("room-created", ({ roomCode: code, players: playerList }) => {
-      setRoomCode(code);
-      setPlayers(playerList || []);
-      setStage("lobby");
-    });
-
-    socket.on(
-      "quiz-started",
-      ({
-        question,
-        currentQuestion: qIndex,
-        totalQuestions,
-        quiz: quizData,
-        metadata: quizMetadata,
-      }) => {
-        setQuiz(quizData);
-        setMetadata(quizMetadata);
-        setCurrentQuestion(qIndex);
-        setStage("quiz");
-      }
-    );
-
-    socket.on("player-joined", ({ players: playerList }) => {
-      setPlayers(playerList || []);
-    });
-
-    socket.on("player-left", ({ players: playerList }) => {
-      setPlayers(playerList || []);
-    });
-
-    socket.on(
-      "next-question",
-      ({ question, currentQuestion: qIndex, totalQuestions }) => {
-        setCurrentQuestion(qIndex);
-      }
-    );
-
-    socket.on("quiz-completed", ({ leaderboard: lb }) => {
-      setLeaderboard(lb);
-      setStage("results");
-    });
-
-    socket.on("waiting-for-others", ({ playerStats: stats }) => {
-      setPlayerStats(stats);
-      setStage("waiting");
-    });
-
-    socket.on("joined-room", ({ roomCode: code, players: playerList }) => {
-      setRoomCode(code);
-      setPlayers(playerList || []);
-      setStage("lobby");
-    });
-
-    return () => {
-      socket.off("room-created");
-      socket.off("quiz-started");
-      socket.off("player-joined");
-      socket.off("player-left");
-      socket.off("next-question");
-      socket.off("quiz-completed");
-      socket.off("waiting-for-others");
-      socket.off("joined-room");
-    };
-  }, [socket, mode]);
+    // Add to window for manual debugging
+    if (typeof window !== "undefined") {
+      window.debugQuizState = {
+        stage,
+        roomCode,
+        players,
+        isHost,
+        currentQuestion,
+        totalQuestions: quiz?.questions?.length || 0,
+      };
+    }
+  }, [stage, roomCode, players, isHost, currentQuestion, quiz]);
 
   // Show name prompt for multiplayer
   useEffect(() => {
@@ -161,48 +309,134 @@ export default function ModePage() {
     }
   }, [mode, stage, playerName]);
 
+  // Track question start time for timer
+  useEffect(() => {
+    if (stage === "quiz") {
+      setQuestionStartTime(Date.now());
+      console.log("⏱️ Question timer started for Q" + (currentQuestion + 1));
+    }
+  }, [stage, currentQuestion]);
+
   // Handlers
   const handleBackFromUpload = () => {
     router.push("/");
   };
 
   const handleQuizGenerated = (generatedQuiz, quizMetadata) => {
-    setQuiz(generatedQuiz);
+    // Keep quiz as an array for server compatibility
+    const quizArray = Array.isArray(generatedQuiz)
+      ? generatedQuiz
+      : generatedQuiz.questions || [];
+
+    // Wrap in object for local use
+    const quizObject = {
+      questions: quizArray,
+      ...quizMetadata,
+    };
+
+    setQuiz(quizObject);
     setMetadata(quizMetadata);
 
     if (mode === "solo") {
+      // Randomize questions and options for solo mode too
+      const randomizedQuiz = randomizeQuiz(quizArray);
+      setQuiz({ questions: randomizedQuiz, ...quizMetadata });
       setCurrentQuestion(0);
       setUserAnswers([]);
+      setAnswerTimes([]); // Reset answer times for new quiz
       setStage("quiz");
     } else if (mode === "multiplayer" && isHost) {
-      // Host creates room with the quiz
+      // Generate a 6-character room code
+      const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      // Host creates room with the quiz (send array, not object)
+      // Server will send original quiz, each client will randomize on their end
       socket.emit("create-room", {
-        playerName,
-        quiz: generatedQuiz,
+        roomCode,
+        quiz: quizArray, // Send original array, clients will randomize
         metadata: quizMetadata,
+        hostName: playerName,
       });
     }
   };
 
   const handleAnswer = (answer) => {
-    const newAnswers = [...userAnswers, answer];
+    console.log("🎯 Answer selected:", answer);
+    console.log("🎯 Current question:", currentQuestion);
+    console.log("🎯 Total questions:", quiz.questions.length);
+    console.log("🎯 Mode:", mode);
+
+    // Calculate time spent on this question
+    const timeSpent = questionStartTime ? Date.now() - questionStartTime : 0;
+    console.log(
+      `⏱️ Time spent on Q${currentQuestion + 1}: ${timeSpent}ms (${(
+        timeSpent / 1000
+      ).toFixed(1)}s)`
+    );
+
+    // Get the current question data
+    const currentQuestionData = quiz.questions[currentQuestion];
+
+    // Convert answer index to answer text for consistent storage
+    const selectedAnswerText = currentQuestionData.options[answer];
+
+    // Store answer as TEXT (not index) for both solo and multiplayer
+    const newAnswers = [...userAnswers, selectedAnswerText];
     setUserAnswers(newAnswers);
+
+    // Track time spent for solo mode
+    if (mode === "solo") {
+      const newAnswerTimes = [...answerTimes, timeSpent];
+      setAnswerTimes(newAnswerTimes);
+    }
+
+    console.log("📝 Answer stored:", {
+      answerIndex: answer,
+      answerText: selectedAnswerText,
+      correctAnswer: currentQuestionData.correctAnswer,
+      correctAnswerText:
+        currentQuestionData.options[currentQuestionData.correctAnswer],
+      timeSpent: mode === "solo" ? timeSpent : "tracked by server",
+    });
 
     if (mode === "solo") {
       if (currentQuestion < quiz.questions.length - 1) {
+        console.log("➡️ Moving to next question:", currentQuestion + 1);
         setCurrentQuestion(currentQuestion + 1);
       } else {
+        console.log("🏁 Last question - showing results");
         setStage("results");
       }
     } else if (mode === "multiplayer") {
+      console.log("📤 Submitting answer to server:", {
+        roomCode,
+        questionIndex: currentQuestion,
+        questionText: currentQuestionData.question.substring(0, 50) + "...",
+        answerIndex: answer,
+        selectedAnswerText: selectedAnswerText,
+        timeSpent: timeSpent,
+      });
+
       socket.emit("submit-answer", {
         roomCode,
-        answer,
-        currentQuestion,
+        questionIndex: currentQuestion,
+        questionText: currentQuestionData.question,
+        answerIndex: answer,
+        selectedAnswerText: selectedAnswerText,
+        timeSpent: timeSpent, // Now sending actual time spent
       });
 
       if (currentQuestion < quiz.questions.length - 1) {
+        console.log(
+          "➡️ [Multiplayer] Moving to next question:",
+          currentQuestion + 1
+        );
         setCurrentQuestion(currentQuestion + 1);
+      } else {
+        console.log(
+          "🏁 [Multiplayer] Last question answered - waiting for server response..."
+        );
+        // Server will send waiting-for-others or quiz-finished
       }
     }
   };
@@ -232,8 +466,23 @@ export default function ModePage() {
       return;
     }
 
+    if (!socket || !socket.connected) {
+      console.error("❌ Socket not connected yet!");
+      alert("Connection not ready. Please wait a moment and try again.");
+      return;
+    }
+
+    const roomCodeUpper = joinRoomCode.toUpperCase();
+    console.log(
+      "🔄 Attempting to join room:",
+      roomCodeUpper,
+      "as player:",
+      playerName
+    );
+    console.log("Socket connected:", socket.connected, "Socket ID:", socket.id);
+
     socket.emit("join-room", {
-      roomCode: joinRoomCode.toUpperCase(),
+      roomCode: roomCodeUpper,
       playerName,
     });
     setShowJoinPrompt(false);
@@ -267,6 +516,7 @@ export default function ModePage() {
       case "lobby":
         return (
           <MultiplayerLobby
+            socket={socket}
             roomCode={roomCode}
             players={players}
             isHost={isHost}
@@ -288,6 +538,7 @@ export default function ModePage() {
       case "waiting":
         return (
           <WaitingForResults
+            roomCode={roomCode}
             playerStats={playerStats}
             totalQuestions={quiz.questions.length}
           />
@@ -296,12 +547,15 @@ export default function ModePage() {
       case "results":
         return (
           <QuizResults
-            quiz={quiz}
+            quiz={quiz.questions}
             metadata={metadata}
             userAnswers={userAnswers}
+            answerTimes={answerTimes}
             mode={mode}
             leaderboard={leaderboard}
-            onReturnHome={handleReturnHome}
+            playerName={playerName}
+            roomCode={roomCode}
+            onPlayAgain={handleReturnHome}
           />
         );
 
