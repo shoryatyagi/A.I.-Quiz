@@ -1,6 +1,7 @@
 # AI Question Generation - Empty Options Issue: Executive Summary
 
 ## 🔴 Critical Issue Found
+
 **Some AI-generated quiz questions display empty/blank options instead of answer choices.**
 
 ---
@@ -10,25 +11,30 @@
 The problem occurs due to **5 interconnected failures** in the JSON parsing and validation pipeline:
 
 ### 1. **Corrupted JSON Parsing** (Lines 378-391 in `openai.js`)
+
 - Aggressive regex replaces whitespace globally, corrupting quoted strings
 - Quote escaping logic mangles the JSON structure
 - Control characters replaced with spaces instead of being removed
 
 ### 2. **Insufficient Validation** (Lines 414-434 in `openai.js`)
+
 - Only checks if array exists and has 4 items
 - **Missing:** Validates if each option is a non-empty string
 - **Missing:** Validates if correct answer content exists
 
 ### 3. **Broken Shuffling Logic** (Lines 437-448 in `openai.js`)
+
 - When options are empty/missing, `indexOf()` returns -1
 - This creates invalid question data with incorrect answer tracking
 - No error checking before shuffling
 
 ### 4. **Frontend Display Without Validation** (Lines 102-118 in `QuizQuestion.js`)
+
 - Renders options without checking if they're empty
 - Result: Blank buttons appear for corrupted options
 
 ### 5. **Inconsistent AI Response Parsing**
+
 - DeepSeek sometimes returns incomplete JSON
 - Sometimes includes markdown despite explicit instructions
 - Fallback error handling doesn't validate content
@@ -37,12 +43,12 @@ The problem occurs due to **5 interconnected failures** in the JSON parsing and 
 
 ## Impact
 
-| Symptom | Root Cause | Severity |
-|---------|-----------|----------|
-| Blank option buttons | Empty string in options array + no frontend validation | 🔴 Critical |
-| Wrong answer grading | `correctAnswer` index becomes -1 after shuffling | 🔴 Critical |
-| Quiz completion issues | Broken data prevents proper answer tracking | 🔴 Critical |
-| User confusion | Can't select correct answer from blank options | 🔴 Critical |
+| Symptom                | Root Cause                                             | Severity    |
+| ---------------------- | ------------------------------------------------------ | ----------- |
+| Blank option buttons   | Empty string in options array + no frontend validation | 🔴 Critical |
+| Wrong answer grading   | `correctAnswer` index becomes -1 after shuffling       | 🔴 Critical |
+| Quiz completion issues | Broken data prevents proper answer tracking            | 🔴 Critical |
+| User confusion         | Can't select correct answer from blank options         | 🔴 Critical |
 
 ---
 
@@ -50,23 +56,25 @@ The problem occurs due to **5 interconnected failures** in the JSON parsing and 
 
 ### **5 Progressive Fixes** (applied in order):
 
-| Priority | Fix | File | Impact |
-|----------|-----|------|--------|
-| 1️⃣ | Add content validation | `openai.js` | Catch corrupted data early |
-| 2️⃣ | Fix JSON parsing logic | `openai.js` | Prevent corruption during parsing |
-| 3️⃣ | Add shuffling validation | `openai.js` | Detect broken data before use |
-| 4️⃣ | Improve AI prompt | `openai.js` | Prevent bad data generation |
-| 5️⃣ | Add frontend error handling | `QuizQuestion.js` | Graceful error display |
+| Priority | Fix                         | File              | Impact                            |
+| -------- | --------------------------- | ----------------- | --------------------------------- |
+| 1️⃣       | Add content validation      | `openai.js`       | Catch corrupted data early        |
+| 2️⃣       | Fix JSON parsing logic      | `openai.js`       | Prevent corruption during parsing |
+| 3️⃣       | Add shuffling validation    | `openai.js`       | Detect broken data before use     |
+| 4️⃣       | Improve AI prompt           | `openai.js`       | Prevent bad data generation       |
+| 5️⃣       | Add frontend error handling | `QuizQuestion.js` | Graceful error display            |
 
 ---
 
 ## Files Affected
 
 ### **Must Fix:**
+
 - `src/lib/openai.js` - JSON parsing, validation, shuffling (3 fixes)
 - `src/components/QuizQuestion.js` - Frontend validation (1 fix)
 
 ### **Should Improve:**
+
 - `src/app/api/generate-quiz/route.js` - Final validation before response
 
 ---
@@ -77,20 +85,20 @@ The problem occurs due to **5 interconnected failures** in the JSON parsing and 
 
 **File:** `src/lib/openai.js`
 
-| Lines | Change | Purpose |
-|-------|--------|---------|
-| 379 | `" "` → `""` | Remove control chars, don't add spaces |
-| 382-391 | Remove aggressive regex | Stop corrupting JSON |
-| 414-434 | Add option content checks | Validate each option is non-empty |
-| 437-448 | Add shuffle validation | Check correctAnswer is found |
-| 225-280 | Improve AI prompt | Explicit requirements for options |
+| Lines   | Change                    | Purpose                                |
+| ------- | ------------------------- | -------------------------------------- |
+| 379     | `" "` → `""`              | Remove control chars, don't add spaces |
+| 382-391 | Remove aggressive regex   | Stop corrupting JSON                   |
+| 414-434 | Add option content checks | Validate each option is non-empty      |
+| 437-448 | Add shuffle validation    | Check correctAnswer is found           |
+| 225-280 | Improve AI prompt         | Explicit requirements for options      |
 
 **File:** `src/components/QuizQuestion.js`
 
-| Lines | Change | Purpose |
-|-------|--------|---------|
-| 95-110 | Add empty check | Show error if options missing |
-| 115 | Add safe fallback | Display "(Empty option)" if needed |
+| Lines  | Change            | Purpose                            |
+| ------ | ----------------- | ---------------------------------- |
+| 95-110 | Add empty check   | Show error if options missing      |
+| 115    | Add safe fallback | Display "(Empty option)" if needed |
 
 ---
 
@@ -108,6 +116,7 @@ The problem occurs due to **5 interconnected failures** in the JSON parsing and 
 ## Before & After
 
 ### **Before (Broken):**
+
 ```javascript
 // Question with corrupted options
 {
@@ -119,11 +128,12 @@ The problem occurs due to **5 interconnected failures** in the JSON parsing and 
 // Frontend renders:
 // [ A ] Option A
 // [ B ]              ← Blank button
-// [ C ]              ← Blank button  
+// [ C ]              ← Blank button
 // [ D ] Option D
 ```
 
 ### **After (Fixed):**
+
 ```javascript
 // Question with validated options
 {
@@ -170,6 +180,7 @@ The problem occurs due to **5 interconnected failures** in the JSON parsing and 
 ## Questions?
 
 If you need:
+
 - **Detailed code changes:** See `AI_QUESTION_GENERATION_FIXES.md`
 - **Technical deep dive:** See `AI_QUESTION_GENERATION_ISSUE_ANALYSIS.md`
 - **Implementation steps:** See `AI_QUESTION_GENERATION_FIXES.md`
@@ -177,4 +188,3 @@ If you need:
 ---
 
 **Status:** 🔴 **ANALYSIS COMPLETE** - Ready for implementation
-

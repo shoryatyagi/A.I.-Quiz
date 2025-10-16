@@ -15,6 +15,7 @@ This guide walks through implementing each fix one by one with complete code sni
 ### 1.1: Find the Current Validation Code
 
 Search for this section in `generateQuizFromPrompt`:
+
 ```javascript
 // Validate each question has required fields
 questions.forEach((q, index) => {
@@ -42,12 +43,14 @@ questions.forEach((q, index) => {
       }`
     );
   }
-  
+
   // ✅ NEW: Validate option content
   q.options.forEach((option, optIndex) => {
     if (typeof option !== "string") {
       throw new Error(
-        `Question ${index + 1}, Option ${optIndex + 1}: must be a string, got ${typeof option}`
+        `Question ${index + 1}, Option ${
+          optIndex + 1
+        }: must be a string, got ${typeof option}`
       );
     }
     if (!option || !option.trim()) {
@@ -58,11 +61,13 @@ questions.forEach((q, index) => {
     // Warn if option is suspiciously short (might be data corruption)
     if (option.trim().length < 2) {
       console.warn(
-        `⚠️ Question ${index + 1}, Option ${optIndex + 1}: Very short option: "${option}"`
+        `⚠️ Question ${index + 1}, Option ${
+          optIndex + 1
+        }: Very short option: "${option}"`
       );
     }
   });
-  
+
   if (
     typeof q.correctAnswer !== "number" ||
     q.correctAnswer < 0 ||
@@ -72,12 +77,14 @@ questions.forEach((q, index) => {
       `Question ${index + 1} has invalid correctAnswer: ${q.correctAnswer}`
     );
   }
-  
+
   // ✅ NEW: Validate correct answer content
   const correctAnswerText = q.options[q.correctAnswer];
   if (!correctAnswerText || !correctAnswerText.trim()) {
     throw new Error(
-      `Question ${index + 1}: correct answer (Option ${q.correctAnswer + 1}) is empty`
+      `Question ${index + 1}: correct answer (Option ${
+        q.correctAnswer + 1
+      }) is empty`
     );
   }
 });
@@ -86,6 +93,7 @@ questions.forEach((q, index) => {
 ### 1.3: Test This Step
 
 Generate a test quiz and check the console:
+
 ```bash
 # Expected output:
 # ✅ Parsed 10 questions successfully
@@ -105,12 +113,13 @@ Generate a test quiz and check the console:
 ### 2.1: Find the Current JSON Cleanup Code
 
 Search for:
+
 ```javascript
 // Clean up common JSON issues
 jsonText = jsonText
   .replace(/,(\s*[}\]])/g, "$1")
   .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
-  .replace(/\s+/g, " ")
+  .replace(/\s+/g, " ");
 ```
 
 ### 2.2: Replace with Safe JSON Parsing
@@ -192,6 +201,7 @@ try {
 ### 3.1: Find the Shuffling Code
 
 Search for:
+
 ```javascript
 // Shuffle answer options randomly for each question
 const shuffledQuestions = questions.map((q) => {
@@ -205,7 +215,7 @@ Replace the shuffling block:
 // Shuffle answer options randomly for each question
 const shuffledQuestions = questions.map((q, qIndex) => {
   const correctAnswerText = q.options[q.correctAnswer];
-  
+
   // ✅ Validate before shuffling
   if (!correctAnswerText || !correctAnswerText.trim()) {
     throw new Error(
@@ -225,7 +235,7 @@ const shuffledQuestions = questions.map((q, qIndex) => {
 
   // Find new index of correct answer after shuffling
   const newCorrectIndex = shuffledOptions.indexOf(correctAnswerText);
-  
+
   // ✅ Validate after shuffling
   if (newCorrectIndex === -1) {
     console.error(`❌ Question ${qIndex + 1} shuffling failed:`, {
@@ -234,7 +244,9 @@ const shuffledQuestions = questions.map((q, qIndex) => {
       shuffledOptions,
     });
     throw new Error(
-      `Question ${qIndex + 1}: Failed to find correct answer after shuffling. This indicates data corruption.`
+      `Question ${
+        qIndex + 1
+      }: Failed to find correct answer after shuffling. This indicates data corruption.`
     );
   }
 
@@ -266,6 +278,7 @@ const shuffledQuestions = questions.map((q, qIndex) => {
 ### 4.1: Find the Current Prompt
 
 Search for:
+
 ```javascript
 const prompt = `You are an expert quiz generator. Create exactly ${numberOfQuestions}...
 ```
@@ -338,6 +351,7 @@ Return ONLY the JSON array, nothing else.`;
 ### 5.1: Find the Options Rendering Code
 
 Search for:
+
 ```javascript
 {/* Options */}
 <div className="space-y-4 mb-6">
@@ -363,9 +377,12 @@ if (hasEmptyOptions) {
       className="w-full max-w-3xl mx-auto p-8"
     >
       <div className="bg-red-50 border-2 border-red-400 rounded-2xl shadow-xl p-8 text-center">
-        <h3 className="text-xl font-bold text-red-600 mb-2">⚠️ Question Data Error</h3>
+        <h3 className="text-xl font-bold text-red-600 mb-2">
+          ⚠️ Question Data Error
+        </h3>
         <p className="text-red-700 mb-4">
-          This question has incomplete data with empty options. This should not happen.
+          This question has incomplete data with empty options. This should not
+          happen.
         </p>
         <p className="text-sm text-red-600">
           Please report this issue to support and try generating the quiz again.
@@ -381,11 +398,13 @@ if (hasEmptyOptions) {
 In the mapping, update the option span (around line 115):
 
 From:
+
 ```jsx
 <span className="flex-1 font-medium text-gray-800">{option}</span>
 ```
 
 To:
+
 ```jsx
 <span className="flex-1 font-medium text-gray-800">
   {option && option.trim() ? option : "(Empty option - Data Error)"}
@@ -415,6 +434,7 @@ To:
 ```
 
 **Check:**
+
 - ✅ All options display (no blanks)
 - ✅ All 4 options per question
 - ✅ No console errors
@@ -430,6 +450,7 @@ To:
 ```
 
 **Check:**
+
 - ✅ Answers recorded correctly
 - ✅ Correct/incorrect marked properly
 - ✅ Score calculation correct
@@ -437,6 +458,7 @@ To:
 ### Phase 3: Edge Case Testing
 
 Try these topics:
+
 - ✅ "C++" (special chars)
 - ✅ "What is Python?" (question format)
 - ✅ "Machine Learning, AI, and Deep Learning" (multiple topics)
@@ -466,6 +488,7 @@ After implementing all 5 steps:
 If something breaks:
 
 ### Quick Rollback
+
 ```bash
 # Use Git to revert just the openai.js changes
 git checkout src/lib/openai.js
@@ -474,7 +497,9 @@ git checkout src/lib/openai.js
 ```
 
 ### Incremental Rollback
+
 If you added fixes in order (1-5) and #4 breaks:
+
 - Revert just the AI prompt change (Step 4)
 - Keep steps 1-3 which are safer
 
@@ -482,13 +507,13 @@ If you added fixes in order (1-5) and #4 breaks:
 
 ## 📝 Summary
 
-| Step | File | Change | Time | Risk |
-|------|------|--------|------|------|
-| 1 | openai.js | Add validation | 15m | 🟢 Low |
-| 2 | openai.js | Fix parsing | 20m | 🟢 Low |
-| 3 | openai.js | Shuffle check | 10m | 🟢 Low |
-| 4 | openai.js | Better prompt | 15m | 🟡 Medium |
-| 5 | QuizQuestion.js | Frontend error | 15m | 🟢 Low |
+| Step | File            | Change         | Time | Risk      |
+| ---- | --------------- | -------------- | ---- | --------- |
+| 1    | openai.js       | Add validation | 15m  | 🟢 Low    |
+| 2    | openai.js       | Fix parsing    | 20m  | 🟢 Low    |
+| 3    | openai.js       | Shuffle check  | 10m  | 🟢 Low    |
+| 4    | openai.js       | Better prompt  | 15m  | 🟡 Medium |
+| 5    | QuizQuestion.js | Frontend error | 15m  | 🟢 Low    |
 
 **Total Time:** ~1.5 hours
 **Total Risk:** 🟢 **LOW** - Changes are isolated and well-tested
@@ -498,16 +523,19 @@ If you added fixes in order (1-5) and #4 breaks:
 ## ❓ Troubleshooting
 
 ### "Still getting empty options"
+
 - ☑️ Did you apply Step 1? (validation)
 - ☑️ Check console for error messages
 - ☑️ Restart dev server
 
 ### "Quiz generation fails"
+
 - ☑️ Check Step 4 - Did you update the prompt correctly?
 - ☑️ Check browser console for API errors
 - ☑️ Verify OPENROUTER_API_KEY is set
 
 ### "Answers not grading correctly"
+
 - ☑️ Check Step 3 - Shuffling validation
 - ☑️ Check Step 1 - Content validation
 - ☑️ Look for "shuffling failed" errors in console
@@ -515,4 +543,3 @@ If you added fixes in order (1-5) and #4 breaks:
 ---
 
 **All ready? Start with Step 1!** 🚀
-
