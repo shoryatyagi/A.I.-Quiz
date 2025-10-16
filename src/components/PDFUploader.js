@@ -96,6 +96,7 @@ export default function PDFUploader({ onQuizGenerated }) {
   const [file, setFile] = useState(null);
   const [quizName, setQuizName] = useState("");
   const [numberOfQuestions, setNumberOfQuestions] = useState(10);
+  const [aiModel, setAiModel] = useState("deepseek"); // New state for AI model selection
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -134,7 +135,20 @@ export default function PDFUploader({ onQuizGenerated }) {
         body: formData,
       });
 
-      const data = await response.json();
+      // Check if response is actually JSON
+      const contentType = response.headers.get("content-type");
+      let data;
+      
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        // Response is not JSON (might be HTML error page on Vercel)
+        const text = await response.text();
+        console.error("❌ Non-JSON response:", text.substring(0, 500));
+        throw new Error(
+          `Server returned non-JSON response (${response.status}). This might be a server configuration issue or Cloudinary credentials problem.`
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to upload PDF");
@@ -145,7 +159,16 @@ export default function PDFUploader({ onQuizGenerated }) {
       setError("");
     } catch (err) {
       console.error("❌ Auto-upload failed:", err);
-      setError(err.message);
+      
+      // Provide more helpful error messages
+      let errorMessage = err.message;
+      if (err.message.includes("JSON.parse")) {
+        errorMessage = "Server configuration error. Please check Cloudinary credentials in environment variables.";
+      } else if (err.message.includes("NetworkError") || err.message.includes("Failed to fetch")) {
+        errorMessage = "Network error. Please check your internet connection.";
+      }
+      
+      setError(errorMessage);
       setUploadedPdfUrl(null);
       setFile(null); // Clear file on upload failure
     } finally {
@@ -256,8 +279,17 @@ export default function PDFUploader({ onQuizGenerated }) {
           pdfUrl: uploadedPdfUrl,
           quizName,
           numberOfQuestions: numQuestions,
+          aiModel, // Include AI model selection
         }),
       });
+
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Non-JSON response:", text);
+        throw new Error("Server returned an invalid response. Please check your API configuration.");
+      }
 
       const data = await response.json();
 
@@ -267,6 +299,7 @@ export default function PDFUploader({ onQuizGenerated }) {
 
       onQuizGenerated(data.quiz, data.metadata);
     } catch (err) {
+      console.error("Quiz generation error:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -432,6 +465,44 @@ export default function PDFUploader({ onQuizGenerated }) {
         />
         <p className="mt-1 text-xs text-slate-500">
           Minimum {MIN_QUESTIONS} questions (no maximum)
+        </p>
+      </div>
+
+      {/* AI Model Selection */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          AI Model
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setAiModel("deepseek")}
+            disabled={loading}
+            className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
+              aiModel === "deepseek"
+                ? "bg-[#135bec] text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            🚀 DeepSeek (Free)
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiModel("gemini")}
+            disabled={loading}
+            className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
+              aiModel === "gemini"
+                ? "bg-[#135bec] text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            ✨ Gemini 2.0
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          {aiModel === "deepseek" 
+            ? "DeepSeek V3.1 - Fast and free via OpenRouter" 
+            : "Google Gemini 2.0 Flash - Fast and accurate (requires API key)"}
         </p>
       </div>
 

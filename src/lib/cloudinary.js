@@ -16,6 +16,15 @@ cloudinary.config({
  */
 export async function uploadPDFToCloudinary(fileBuffer, originalFilename) {
   try {
+    // Validate Cloudinary configuration
+    if (!process.env.CLOUDINARY_CLOUD_NAME || 
+        !process.env.CLOUDINARY_API_KEY || 
+        !process.env.CLOUDINARY_API_SECRET) {
+      throw new Error(
+        "Cloudinary credentials are not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in environment variables."
+      );
+    }
+
     // Get folder name from env (default to 'quiz-app')
     const folderName = process.env.CLOUDINARY_FOLDER_NAME || "quiz-app";
 

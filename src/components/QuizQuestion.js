@@ -61,6 +61,34 @@ export default function QuizQuestion({
     return "bg-gray-100 border-gray-300";
   };
 
+  // ✅ Check for empty options before rendering
+  const hasEmptyOptions = question.options.some(
+    (opt) => !opt || !opt.trim()
+  );
+
+  if (hasEmptyOptions) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-3xl mx-auto p-8"
+      >
+        <div className="bg-red-50 border-2 border-red-400 rounded-2xl shadow-xl p-8 text-center">
+          <h3 className="text-xl font-bold text-red-600 mb-2">⚠️ Question Data Error</h3>
+          <p className="text-red-700 mb-4">
+            This question has incomplete data with empty options. This should not happen.
+          </p>
+          <p className="text-sm text-red-600 mb-4">
+            Please report this issue and try generating the quiz again.
+          </p>
+          <div className="text-xs text-gray-600 bg-white p-3 rounded border border-red-200">
+            <strong>Debug Info:</strong> Question {questionNumber} - {question.options.filter(opt => !opt || !opt.trim()).length} empty option(s) detected
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -114,7 +142,9 @@ export default function QuizQuestion({
               <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center font-semibold">
                 {String.fromCharCode(65 + index)}
               </div>
-              <span className="flex-1 font-medium text-gray-800">{option}</span>
+              <span className="flex-1 font-medium text-gray-800">
+                {option && option.trim() ? option : "(Empty option - Data Error)"}
+              </span>
             </motion.button>
           ))}
         </div>

@@ -1,7 +1,9 @@
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// DeepSeek via OpenRouter configuration
 export const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1", // ✅ FIXED
+  baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {
     Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -10,8 +12,134 @@ export const openai = new OpenAI({
   },
 });
 
-export const generateQuizFromText = async (text, numberOfQuestions = 10) => {
+// Google Gemini configuration
+let geminiAI = null;
+if (process.env.GEMINI_API_KEY) {
+  geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+}
+
+/**
+ * Generate quiz using Google Gemini
+ * @param {string} prompt - The prompt for quiz generation
+ * @param {number} maxRetries - Maximum retry attempts
+ * @returns {Promise<string>} - AI response text
+ */
+async function generateWithGemini(prompt, maxRetries = 2) {
+  if (!geminiAI) {
+    throw new Error(
+      "Gemini API key not configured. Please set GEMINI_API_KEY environment variable."
+    );
+  }
+
+  let retryCount = 0;
+  while (retryCount <= maxRetries) {
+    try {
+      const model = geminiAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (apiError) {
+      console.error(
+        `❌ Gemini API Error (attempt ${retryCount + 1}/${maxRetries + 1}):`,
+        apiError
+      );
+
+      if (retryCount < maxRetries) {
+        retryCount++;
+        console.log(
+          `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${maxRetries + 1})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        continue;
+      } else {
+        throw new Error(
+          `Gemini API Error: ${apiError.message || "Unknown error"}`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Generate quiz using DeepSeek via OpenRouter
+ * @param {string} systemPrompt - System role prompt
+ * @param {string} userPrompt - User prompt
+ * @param {number} maxRetries - Maximum retry attempts
+ * @returns {Promise<string>} - AI response text
+ */
+async function generateWithDeepSeek(systemPrompt, userPrompt, maxRetries = 2) {
+  let retryCount = 0;
+  while (retryCount <= maxRetries) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "deepseek/deepseek-chat-v3.1:free",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+        temperature: 0.8,
+        max_tokens: 4000,
+      });
+
+      if (!completion || !completion.choices || completion.choices.length === 0) {
+        throw new Error("No response from AI model");
+      }
+
+      return completion.choices[0].message.content.trim();
+    } catch (apiError) {
+      console.error(
+        `❌ OpenRouter API Error (attempt ${retryCount + 1}/${maxRetries + 1}):`,
+        apiError
+      );
+
+      // Check for specific error types
+      if (apiError.message && apiError.message.includes("404")) {
+        throw new Error(
+          "Free model access blocked. Please go to https://openrouter.ai/settings/privacy and enable free model usage."
+        );
+      }
+
+      // Check for 502 upstream errors
+      if (
+        apiError.status === 502 ||
+        (apiError.message && apiError.message.includes("502"))
+      ) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(
+            `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
+              maxRetries + 1
+            })`
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          continue;
+        } else {
+          throw new Error(
+            "The AI model is temporarily unavailable (upstream server error). Please try again in a few moments."
+          );
+        }
+      }
+
+      // For other errors, throw immediately
+      throw new Error(`API Error: ${apiError.message}`);
+    }
+  }
+}
+
+export const generateQuizFromText = async (
+  text,
+  numberOfQuestions = 10,
+  aiModel = "deepseek"
+) => {
   try {
+    console.log(`🤖 Using AI Model: ${aiModel.toUpperCase()}`);
+    
     const prompt = `You are an AI quiz generator. Analyze the following content and generate exactly ${numberOfQuestions} multiple-choice questions. Each question should have:
 - A clear, specific question
 - Four answer options (labeled A, B, C, D)
@@ -33,83 +161,16 @@ Return ONLY a JSON array in this exact format:
   }
 ]`;
 
-    let completion;
-    let retryCount = 0;
-    const maxRetries = 2;
-
-    while (retryCount <= maxRetries) {
-      try {
-        completion = await openai.chat.completions.create({
-          model: "deepseek/deepseek-chat-v3.1:free",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a helpful quiz generator that creates educational multiple-choice questions. Always return valid JSON arrays only.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 4000,
-        });
-
-        // If successful, break out of retry loop
-        break;
-      } catch (apiError) {
-        console.error(
-          `❌ OpenRouter API Error (attempt ${retryCount + 1}/${
-            maxRetries + 1
-          }):`,
-          apiError
-        );
-
-        // Check for specific error types
-        if (apiError.message && apiError.message.includes("404")) {
-          throw new Error(
-            "Free model access blocked. Please go to https://openrouter.ai/settings/privacy and enable free model usage by allowing your data to be used for training."
-          );
-        }
-
-        // Check for 502 upstream errors
-        if (
-          apiError.status === 502 ||
-          (apiError.message && apiError.message.includes("502"))
-        ) {
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(
-              `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
-                maxRetries + 1
-              })`
-            );
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            continue;
-          } else {
-            throw new Error(
-              "The AI model is temporarily unavailable (upstream server error). Please try again in a few moments, or contact support if the issue persists."
-            );
-          }
-        }
-
-        // For other errors, throw immediately
-        throw new Error(`API Error: ${apiError.message}`);
-      }
+    let responseText;
+    
+    // Generate with selected AI model
+    if (aiModel === "gemini") {
+      responseText = await generateWithGemini(prompt);
+    } else {
+      // DeepSeek (default)
+      const systemPrompt = "You are a helpful quiz generator that creates educational multiple-choice questions. Always return valid JSON arrays only.";
+      responseText = await generateWithDeepSeek(systemPrompt, prompt);
     }
-
-    // Add error checking
-    console.log("API Response:", JSON.stringify(completion, null, 2));
-
-    if (!completion || !completion.choices || completion.choices.length === 0) {
-      console.error("Invalid API response:", completion);
-      throw new Error(
-        "No response from AI model. Please check your API settings."
-      );
-    }
-
-    const responseText = completion.choices[0].message.content.trim();
 
     // Extract JSON from markdown code blocks if present
     let jsonText = responseText;
@@ -167,9 +228,12 @@ Return ONLY a JSON array in this exact format:
 export const generateQuizFromPrompt = async (
   topic,
   numberOfQuestions = 10,
-  difficulty = "medium"
+  difficulty = "medium",
+  aiModel = "deepseek"
 ) => {
   try {
+    console.log(`🤖 Using AI Model: ${aiModel.toUpperCase()}`);
+    
     // Clean the topic to remove common instruction phrases
     // Users now enter the topic separately from the number field,
     // but we still handle cases where they write "create a quiz on X" or "quiz about X"
@@ -201,32 +265,43 @@ export const generateQuizFromPrompt = async (
 
     const prompt = `You are an expert quiz generator. Create exactly ${numberOfQuestions} multiple-choice questions about: "${cleanedTopic}"
 
-IMPORTANT: Create questions specifically about the subject "${cleanedTopic}" - NOT about creating quizzes or the number of questions.
+CRITICAL REQUIREMENTS:
+1. Create questions SPECIFICALLY about "${cleanedTopic}", NOT about quiz creation or the number of questions
+2. EVERY question MUST have exactly 4 options - NO MORE, NO LESS
+3. EVERY option MUST be a non-empty string with at least 2 characters
+4. The correct answer must be one of the 4 options (index 0-3)
+5. Return ONLY a valid JSON array - NO markdown, NO explanations, NO extra text
 
 Difficulty Level: ${difficulty.toUpperCase()}
 ${difficultyInstructions[difficulty]}
 
-Requirements for each question:
-- Clear, specific question about ${cleanedTopic}
-- Four answer options (make them plausible but distinguishable)
-- One correct answer
-- Brief explanation (2-3 sentences) of why it's correct
+For EACH question:
+- Write a clear, specific question about "${cleanedTopic}"
+- Provide exactly 4 plausible answer options (all must be non-empty strings)
+- Mark which option (0, 1, 2, or 3) is correct
+- Provide a 2-3 sentence explanation
 
-Ensure questions:
-- Cover different aspects of ${cleanedTopic}
-- Are ${difficulty} difficulty level
-- Are fact-based and accurate
-- Have clear, unambiguous correct answers
-
-Return ONLY a valid JSON array with NO additional text, markdown, or explanations. Use this EXACT format:
+EXACT OUTPUT FORMAT (no deviations):
 [
   {
     "question": "What is...",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
     "correctAnswer": 0,
+    "explanation": "This is correct because..."
+  },
+  {
+    "question": "When did...",
+    "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
+    "correctAnswer": 2,
     "explanation": "This is correct because..."
   }
 ]
+
+VALIDATION CHECKS:
+- Exactly ${numberOfQuestions} questions in array
+- Each question has 'question', 'options', 'correctAnswer', 'explanation' fields
+- Each 'options' array has exactly 4 non-empty strings
+- Each 'correctAnswer' is 0, 1, 2, or 3
 
 IMPORTANT: 
 - NO trailing commas in JSON
@@ -234,83 +309,16 @@ IMPORTANT:
 - Escape any quotes inside strings with backslash
 - Return ONLY the JSON array, nothing else`;
 
-    let completion;
-    let retryCount = 0;
-    const maxRetries = 2;
-
-    while (retryCount <= maxRetries) {
-      try {
-        completion = await openai.chat.completions.create({
-          model: "deepseek/deepseek-chat-v3.1:free",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an expert educational quiz generator. Create high-quality, accurate multiple-choice questions. ALWAYS return ONLY valid JSON arrays with NO markdown, NO explanations, NO additional text. Ensure proper JSON formatting with no trailing commas.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.8,
-          max_tokens: 4000,
-        });
-
-        // If successful, break out of retry loop
-        break;
-      } catch (apiError) {
-        console.error(
-          `❌ OpenRouter API Error (attempt ${retryCount + 1}/${
-            maxRetries + 1
-          }):`,
-          apiError
-        );
-
-        // Check for specific error types
-        if (apiError.message && apiError.message.includes("404")) {
-          throw new Error(
-            "Free model access blocked. Please go to https://openrouter.ai/settings/privacy and enable free model usage by allowing your data to be used for training."
-          );
-        }
-
-        // Check for 502 upstream errors
-        if (
-          apiError.status === 502 ||
-          (apiError.message && apiError.message.includes("502"))
-        ) {
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(
-              `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
-                maxRetries + 1
-              })`
-            );
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            continue;
-          } else {
-            throw new Error(
-              "The AI model is temporarily unavailable (upstream server error). Please try again in a few moments, or contact support if the issue persists."
-            );
-          }
-        }
-
-        // For other errors, throw immediately
-        throw new Error(`API Error: ${apiError.message}`);
-      }
+    let responseText;
+    
+    // Generate with selected AI model
+    if (aiModel === "gemini") {
+      responseText = await generateWithGemini(prompt);
+    } else {
+      // DeepSeek (default)
+      const systemPrompt = "You are an expert educational quiz generator. Create high-quality, accurate multiple-choice questions. ALWAYS return ONLY valid JSON arrays with NO markdown, NO explanations, NO additional text. Ensure proper JSON formatting with no trailing commas.";
+      responseText = await generateWithDeepSeek(systemPrompt, prompt);
     }
-
-    // Add error checking
-    console.log("API Response:", JSON.stringify(completion, null, 2));
-
-    if (!completion || !completion.choices || completion.choices.length === 0) {
-      console.error("Invalid API response:", completion);
-      throw new Error(
-        "No response from AI model. Please check your API settings."
-      );
-    }
-
-    let responseText = completion.choices[0].message.content.trim();
 
     console.log(
       "Raw AI Response (first 500 chars):",
@@ -332,11 +340,10 @@ IMPORTANT:
       .replace(/\s*<｜.*$/g, "") // Remove anything starting with <｜
       .trim();
 
-    // Clean up common JSON issues
+    // Clean up common JSON issues - MINIMALLY to prevent corruption
     jsonText = jsonText
       .replace(/,(\s*[}\]])/g, "$1") // Remove trailing commas before } and ]
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ") // Replace control characters with space
-      .replace(/\s+/g, " ") // Normalize whitespace
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // REMOVE control characters (not replace with space)
       .trim();
 
     console.log("Cleaned JSON (first 500 chars):", jsonText.substring(0, 500));
@@ -348,9 +355,9 @@ IMPORTANT:
       console.error("❌ JSON Parse Error:", parseError.message);
       console.error("📄 Full problematic JSON:", jsonText);
 
-      // Try more aggressive fixes
+      // Try extraction of JSON array only (no aggressive regex)
       try {
-        console.log("🔧 Attempting aggressive cleanup...");
+        console.log("🔧 Attempting to extract JSON array...");
 
         // Remove any text before first [ and after last ]
         const firstBracket = jsonText.indexOf("[");
@@ -360,26 +367,21 @@ IMPORTANT:
           throw new Error("No JSON array found in response");
         }
 
-        let fixedJson = jsonText.substring(firstBracket, lastBracket + 1);
+        const extractedJson = jsonText.substring(firstBracket, lastBracket + 1);
 
-        // Additional fixes
-        fixedJson = fixedJson
-          .replace(/,(\s*[}\]])/g, "$1") // Remove trailing commas
-          .replace(/\n/g, " ") // Remove newlines
-          .replace(/\r/g, "") // Remove carriage returns
-          .replace(/\t/g, " ") // Replace tabs with spaces
-          .replace(/\\/g, "\\\\") // Escape backslashes
-          .replace(/([^\\])"/g, '$1\\"') // Escape unescaped quotes (careful!)
-          .replace(/^\s*\\"/, '"') // Fix over-escaped quotes at start
-          .replace(/\\"\s*$/g, '"'); // Fix over-escaped quotes at end
+        // Minimal cleanup - only remove control chars and newlines
+        const fixedJson = extractedJson
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
+          .replace(/[\r\n\t]/g, " ") // Only replace newlines, carriage returns, tabs with space
+          .trim();
 
         console.log(
-          "🔧 Fixed JSON (first 500 chars):",
+          "🔧 Extracted JSON (first 500 chars):",
           fixedJson.substring(0, 500)
         );
 
         questions = JSON.parse(fixedJson);
-        console.log("✅ Successfully parsed after aggressive cleanup!");
+        console.log("✅ Successfully parsed after extraction!");
       } catch (secondError) {
         console.error("❌ Second parse attempt failed:", secondError.message);
         throw new Error(
@@ -404,7 +406,7 @@ IMPORTANT:
 
     console.log(`✅ Parsed ${questions.length} questions successfully`);
 
-    // Validate each question has required fields
+    // Validate each question has required fields AND valid content
     questions.forEach((q, index) => {
       if (!q.question || typeof q.question !== "string") {
         throw new Error(
@@ -421,6 +423,27 @@ IMPORTANT:
           }`
         );
       }
+      
+      // ✅ NEW: Validate option content
+      q.options.forEach((option, optIndex) => {
+        if (typeof option !== "string") {
+          throw new Error(
+            `Question ${index + 1}, Option ${optIndex + 1}: must be a string, got ${typeof option}`
+          );
+        }
+        if (!option || !option.trim()) {
+          throw new Error(
+            `Question ${index + 1}, Option ${optIndex + 1}: cannot be empty`
+          );
+        }
+        // Warn if option is suspiciously short (might be data corruption)
+        if (option.trim().length < 2) {
+          console.warn(
+            `⚠️ Question ${index + 1}, Option ${optIndex + 1}: Very short option: "${option}"`
+          );
+        }
+      });
+      
       if (
         typeof q.correctAnswer !== "number" ||
         q.correctAnswer < 0 ||
@@ -430,11 +453,26 @@ IMPORTANT:
           `Question ${index + 1} has invalid correctAnswer: ${q.correctAnswer}`
         );
       }
+      
+      // ✅ NEW: Validate correct answer content
+      const correctAnswerText = q.options[q.correctAnswer];
+      if (!correctAnswerText || !correctAnswerText.trim()) {
+        throw new Error(
+          `Question ${index + 1}: correct answer (Option ${q.correctAnswer + 1}) is empty`
+        );
+      }
     });
 
     // Shuffle answer options randomly for each question
-    const shuffledQuestions = questions.map((q) => {
+    const shuffledQuestions = questions.map((q, qIndex) => {
       const correctAnswerText = q.options[q.correctAnswer];
+      
+      // ✅ Validate before shuffling
+      if (!correctAnswerText || !correctAnswerText.trim()) {
+        throw new Error(
+          `Question ${qIndex + 1}: Cannot shuffle - correct answer is empty`
+        );
+      }
 
       // Shuffle the options array
       const shuffledOptions = [...q.options];
@@ -448,6 +486,18 @@ IMPORTANT:
 
       // Find new index of correct answer after shuffling
       const newCorrectIndex = shuffledOptions.indexOf(correctAnswerText);
+      
+      // ✅ Validate after shuffling
+      if (newCorrectIndex === -1) {
+        console.error(`❌ Question ${qIndex + 1} shuffling failed:`, {
+          originalCorrectAnswer: q.correctAnswer,
+          correctAnswerText,
+          shuffledOptions,
+        });
+        throw new Error(
+          `Question ${qIndex + 1}: Failed to find correct answer after shuffling. This indicates data corruption.`
+        );
+      }
 
       return {
         ...q,

@@ -3,6 +3,20 @@ import { uploadPDFToCloudinary } from "@/lib/cloudinary";
 
 export async function POST(request) {
   try {
+    // Validate Cloudinary configuration
+    if (!process.env.CLOUDINARY_CLOUD_NAME || 
+        !process.env.CLOUDINARY_API_KEY || 
+        !process.env.CLOUDINARY_API_SECRET) {
+      console.error("❌ Cloudinary credentials missing in environment variables");
+      return NextResponse.json(
+        { 
+          error: "Server configuration error: Cloudinary credentials not configured",
+          details: "Please check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables"
+        },
+        { status: 500 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -52,8 +66,13 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("❌ Error uploading PDF:", error);
+    
+    // Always return JSON, even for unexpected errors
     return NextResponse.json(
-      { error: error.message || "Failed to upload PDF" },
+      { 
+        error: error.message || "Failed to upload PDF",
+        details: error.stack ? error.stack.split("\n")[0] : "Unknown error"
+      },
       { status: 500 }
     );
   }

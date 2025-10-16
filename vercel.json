@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/generate-quiz-from-pdf/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-quiz/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/upload-pdf-only/route.js": {
+      "maxDuration": 60
+    }
+  }
+}

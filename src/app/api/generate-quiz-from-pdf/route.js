@@ -10,7 +10,7 @@ export const maxDuration = 60; // 60 seconds for large PDFs
 
 export async function POST(request) {
   try {
-    const { pdfUrl, quizName, numberOfQuestions } = await request.json();
+    const { pdfUrl, quizName, numberOfQuestions, aiModel } = await request.json();
 
     if (!pdfUrl) {
       return NextResponse.json(
@@ -36,7 +36,16 @@ export async function POST(request) {
       );
     }
 
-    console.log(`🤖 Generating quiz from Cloudinary PDF: ${pdfUrl}`);
+    // Validate AI model selection
+    const selectedModel = aiModel || "deepseek"; // Default to deepseek
+    if (!["deepseek", "gemini"].includes(selectedModel)) {
+      return NextResponse.json(
+        { error: "Invalid AI model selection" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`🤖 Generating quiz from Cloudinary PDF using ${selectedModel.toUpperCase()}: ${pdfUrl}`);
 
     // Download PDF from Cloudinary with retry logic
     const buffer = await downloadPDFFromCloudinary(pdfUrl);
@@ -45,9 +54,9 @@ export async function POST(request) {
     console.log("📄 Parsing PDF to extract text...");
     const { text, numPages } = await parsePDF(buffer);
 
-    // Generate quiz using AI
-    console.log(`✨ Generating ${numQuestions} questions using AI...`);
-    const quiz = await generateQuizFromText(text, numQuestions);
+    // Generate quiz using AI with selected model
+    console.log(`✨ Generating ${numQuestions} questions using ${selectedModel.toUpperCase()} AI...`);
+    const quiz = await generateQuizFromText(text, numQuestions, selectedModel);
 
     // Extract filename from URL for metadata
     const urlParts = pdfUrl.split("/");

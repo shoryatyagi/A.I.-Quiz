@@ -3,7 +3,7 @@ import { generateQuizFromPrompt } from "@/lib/openai";
 
 export async function POST(request) {
   try {
-    const { quizName, topic, numberOfQuestions, difficulty } =
+    const { quizName, topic, numberOfQuestions, difficulty, aiModel } =
       await request.json();
 
     // Validate inputs
@@ -26,11 +26,23 @@ export async function POST(request) {
       );
     }
 
-    // Generate quiz using AI
+    // Validate AI model selection
+    const selectedModel = aiModel || "deepseek"; // Default to deepseek
+    if (!["deepseek", "gemini"].includes(selectedModel)) {
+      return NextResponse.json(
+        { error: "Invalid AI model selection" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`🤖 Generating quiz using ${selectedModel.toUpperCase()} model`);
+
+    // Generate quiz using AI with selected model
     const quiz = await generateQuizFromPrompt(
       topic.trim(),
       numberOfQuestions,
-      difficulty
+      difficulty,
+      selectedModel
     );
 
     return NextResponse.json({

@@ -12,6 +12,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
   const [topic, setTopic] = useState("");
   const [numberOfQuestions, setNumberOfQuestions] = useState(10);
   const [difficulty, setDifficulty] = useState("medium");
+  const [aiModel, setAiModel] = useState("deepseek"); // New state for AI model selection
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,6 +46,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
           topic: topic.trim(),
           numberOfQuestions: numQuestions,
           difficulty,
+          aiModel, // Include AI model selection
         }),
       });
 
@@ -190,6 +192,44 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
             Hard
           </button>
         </div>
+      </div>
+
+      {/* AI Model Selection */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          AI Model
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setAiModel("deepseek")}
+            disabled={loading}
+            className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
+              aiModel === "deepseek"
+                ? "bg-[#135bec] text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            🚀 DeepSeek (Free)
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiModel("gemini")}
+            disabled={loading}
+            className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
+              aiModel === "gemini"
+                ? "bg-[#135bec] text-white shadow-md"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            ✨ Gemini 2.0
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          {aiModel === "deepseek" 
+            ? "DeepSeek V3.1 - Fast and free via OpenRouter" 
+            : "Google Gemini 2.0 Flash - Fast and accurate (requires API key)"}
+        </p>
       </div>
 
       {/* Error Message */}
