@@ -345,18 +345,30 @@ export default function ModePage() {
       setUserAnswers([]);
       setAnswerTimes([]); // Reset answer times for new quiz
       setStage("quiz");
-    } else if (mode === "multiplayer" && isHost) {
-      // Generate a 6-character room code
-      const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    } else if (mode === "multiplayer") {
+      // In multiplayer mode, if player hasn't chosen to create/join yet, prompt them
+      if (!isHost && !roomCode) {
+        console.log("📝 Quiz generated in multiplayer mode - showing name prompt");
+        setShowNamePrompt(true);
+        return;
+      }
 
-      // Host creates room with the quiz (send array, not object)
-      // Server will send original quiz, each client will randomize on their end
-      socket.emit("create-room", {
-        roomCode,
-        quiz: quizArray, // Send original array, clients will randomize
-        metadata: quizMetadata,
-        hostName: playerName,
-      });
+      // If they're the host (already clicked Create Room), create the room with the quiz
+      if (isHost) {
+        // Generate a 6-character room code
+        const newRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+        console.log("🎮 Host creating room with quiz:", newRoomCode);
+
+        // Host creates room with the quiz (send array, not object)
+        // Server will send original quiz, each client will randomize on their end
+        socket.emit("create-room", {
+          roomCode: newRoomCode,
+          quiz: quizArray, // Send original array, clients will randomize
+          metadata: quizMetadata,
+          hostName: playerName,
+        });
+      }
     }
   };
 
@@ -448,7 +460,24 @@ export default function ModePage() {
     }
     setIsHost(true);
     setShowNamePrompt(false);
-    setStage("upload");
+    
+    // If quiz already generated, create room immediately
+    if (quiz && quiz.questions && quiz.questions.length > 0) {
+      const quizArray = quiz.questions;
+      const newRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      
+      console.log("🎮 Creating room immediately with existing quiz:", newRoomCode);
+      
+      socket.emit("create-room", {
+        roomCode: newRoomCode,
+        quiz: quizArray,
+        metadata: metadata,
+        hostName: playerName,
+      });
+    } else {
+      // No quiz yet, go back to upload stage
+      setStage("upload");
+    }
   };
 
   const handleJoinRoom = () => {
