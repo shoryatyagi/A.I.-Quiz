@@ -6,7 +6,7 @@ import PDFUploader from "./PDFUploader";
 import AIQuizGenerator from "./AIQuizGenerator";
 
 export default function QuizCreator({ onQuizGenerated, onBack }) {
-  const [activeTab, setActiveTab] = useState("pdf"); // 'pdf' or 'ai'
+  const [activeTab, setActiveTab] = useState("ai"); // 'pdf' or 'ai'
 
   const handleTabChange = (tab) => {
     console.log("Switching to tab:", tab);
@@ -31,8 +31,7 @@ export default function QuizCreator({ onQuizGenerated, onBack }) {
           Create a New Quiz
         </h2>
         <p className="mt-4 text-lg text-slate-600">
-          Generate a quiz from a PDF document or an AI prompt. Choose your
-          preferred method below.
+          Generate a quiz from a PDF document or using AI prompt.
         </p>
 
         {/* Tab Selector */}
@@ -41,7 +40,7 @@ export default function QuizCreator({ onQuizGenerated, onBack }) {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => handleTabChange("pdf")}
+                onClick={() => setActiveTab("pdf")}
                 className={`text-sm font-semibold py-2.5 px-4 rounded-md transition-all duration-200 cursor-pointer ${
                   activeTab === "pdf"
                     ? "bg-[#135bec] text-white"
@@ -52,7 +51,7 @@ export default function QuizCreator({ onQuizGenerated, onBack }) {
               </button>
               <button
                 type="button"
-                onClick={() => handleTabChange("ai")}
+                onClick={() => setActiveTab("ai")}
                 className={`text-sm font-semibold py-2.5 px-4 rounded-md transition-all duration-200 cursor-pointer ${
                   activeTab === "ai"
                     ? "bg-[#135bec] text-white"

@@ -1,21 +1,9 @@
-import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// DeepSeek via OpenRouter configuration
-export const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-    "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-    "X-Title": process.env.NEXT_PUBLIC_SITE_NAME || "Quiz Generator App",
-  },
-});
+import { GoogleGenAI } from "@google/genai";
 
 // Google Gemini configuration
 let geminiAI = null;
 if (process.env.GEMINI_API_KEY) {
-  geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 }
 
 /**
@@ -34,10 +22,41 @@ async function generateWithGemini(prompt, maxRetries = 2) {
   let retryCount = 0;
   while (retryCount <= maxRetries) {
     try {
-      const model = geminiAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
+      const contents = [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ];
+
+      const response = await geminiAI.models.generateContent({
+        model: "gemini-2.0-flash-exp",
+        contents,
+      });
+
+      // Extract text from response - handle different response structures
+      let responseText;
+      if (
+        response.output &&
+        response.output[0] &&
+        response.output[0].content &&
+        response.output[0].content[0]
+      ) {
+        responseText = response.output[0].content[0].text;
+      } else if (response.text) {
+        responseText = response.text;
+      } else if (
+        response.candidates &&
+        response.candidates[0] &&
+        response.candidates[0].content
+      ) {
+        responseText = response.candidates[0].content.parts[0].text;
+      } else {
+        console.error("❌ Unexpected response structure:", response);
+        throw new Error("Unable to extract text from Gemini response");
+      }
+
+      return responseText;
     } catch (apiError) {
       console.error(
         `❌ Gemini API Error (attempt ${retryCount + 1}/${maxRetries + 1}):`,
@@ -47,7 +66,9 @@ async function generateWithGemini(prompt, maxRetries = 2) {
       if (retryCount < maxRetries) {
         retryCount++;
         console.log(
-          `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${maxRetries + 1})`
+          `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
+            maxRetries + 1
+          })`
         );
         await new Promise((resolve) => setTimeout(resolve, 2000));
         continue;
@@ -60,86 +81,10 @@ async function generateWithGemini(prompt, maxRetries = 2) {
   }
 }
 
-/**
- * Generate quiz using DeepSeek via OpenRouter
- * @param {string} systemPrompt - System role prompt
- * @param {string} userPrompt - User prompt
- * @param {number} maxRetries - Maximum retry attempts
- * @returns {Promise<string>} - AI response text
- */
-async function generateWithDeepSeek(systemPrompt, userPrompt, maxRetries = 2) {
-  let retryCount = 0;
-  while (retryCount <= maxRetries) {
-    try {
-      const completion = await openai.chat.completions.create({
-        model: "deepseek/deepseek-chat-v3.1:free",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-        temperature: 0.8,
-        max_tokens: 4000,
-      });
-
-      if (!completion || !completion.choices || completion.choices.length === 0) {
-        throw new Error("No response from AI model");
-      }
-
-      return completion.choices[0].message.content.trim();
-    } catch (apiError) {
-      console.error(
-        `❌ OpenRouter API Error (attempt ${retryCount + 1}/${maxRetries + 1}):`,
-        apiError
-      );
-
-      // Check for specific error types
-      if (apiError.message && apiError.message.includes("404")) {
-        throw new Error(
-          "Free model access blocked. Please go to https://openrouter.ai/settings/privacy and enable free model usage."
-        );
-      }
-
-      // Check for 502 upstream errors
-      if (
-        apiError.status === 502 ||
-        (apiError.message && apiError.message.includes("502"))
-      ) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.log(
-            `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
-              maxRetries + 1
-            })`
-          );
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          continue;
-        } else {
-          throw new Error(
-            "The AI model is temporarily unavailable (upstream server error). Please try again in a few moments."
-          );
-        }
-      }
-
-      // For other errors, throw immediately
-      throw new Error(`API Error: ${apiError.message}`);
-    }
-  }
-}
-
-export const generateQuizFromText = async (
-  text,
-  numberOfQuestions = 10,
-  aiModel = "deepseek"
-) => {
+export const generateQuizFromText = async (text, numberOfQuestions = 10) => {
   try {
-    console.log(`🤖 Using AI Model: ${aiModel.toUpperCase()}`);
-    
+    console.log(`🤖 Using Gemini AI for quiz generation`);
+
     const prompt = `You are an AI quiz generator. Analyze the following content and generate exactly ${numberOfQuestions} multiple-choice questions. Each question should have:
 - A clear, specific question
 - Four answer options (labeled A, B, C, D)
@@ -161,16 +106,7 @@ Return ONLY a JSON array in this exact format:
   }
 ]`;
 
-    let responseText;
-    
-    // Generate with selected AI model
-    if (aiModel === "gemini") {
-      responseText = await generateWithGemini(prompt);
-    } else {
-      // DeepSeek (default)
-      const systemPrompt = "You are a helpful quiz generator that creates educational multiple-choice questions. Always return valid JSON arrays only.";
-      responseText = await generateWithDeepSeek(systemPrompt, prompt);
-    }
+    let responseText = await generateWithGemini(prompt);
 
     // Extract JSON from markdown code blocks if present
     let jsonText = responseText;
@@ -228,12 +164,11 @@ Return ONLY a JSON array in this exact format:
 export const generateQuizFromPrompt = async (
   topic,
   numberOfQuestions = 10,
-  difficulty = "medium",
-  aiModel = "deepseek"
+  difficulty = "medium"
 ) => {
   try {
-    console.log(`🤖 Using AI Model: ${aiModel.toUpperCase()}`);
-    
+    console.log(`🤖 Using Gemini AI for quiz generation`);
+
     // Clean the topic to remove common instruction phrases
     // Users now enter the topic separately from the number field,
     // but we still handle cases where they write "create a quiz on X" or "quiz about X"
@@ -263,20 +198,29 @@ export const generateQuizFromPrompt = async (
       hard: "Create advanced, challenging questions that require deep understanding, analysis, and critical thinking. Include complex scenarios.",
     };
 
-    const prompt = `You are an expert quiz generator. Create exactly ${numberOfQuestions} multiple-choice questions about: "${cleanedTopic}"
+    const prompt = `You are an expert quiz generator. Create exactly ${numberOfQuestions} multiple-choice questions about the topic: "${cleanedTopic}"
+
+TOPIC FOCUS:
+- If the topic is "football", create questions about the sport of football (rules, history, famous players, teams, tournaments)
+- If the topic is "Python", create questions about Python programming language
+- If the topic is "History", create questions about historical events and facts
+- ALL questions must be DIRECTLY RELATED to the subject matter of "${cleanedTopic}"
+- DO NOT create meta questions about quizzes, AI, or question generation itself
+- Focus ONLY on factual knowledge about "${cleanedTopic}"
 
 CRITICAL REQUIREMENTS:
-1. Create questions SPECIFICALLY about "${cleanedTopic}", NOT about quiz creation or the number of questions
-2. EVERY question MUST have exactly 4 options - NO MORE, NO LESS
-3. EVERY option MUST be a non-empty string with at least 2 characters
-4. The correct answer must be one of the 4 options (index 0-3)
-5. Return ONLY a valid JSON array - NO markdown, NO explanations, NO extra text
+1. Create questions SPECIFICALLY about the subject matter of "${cleanedTopic}" itself
+2. Questions should test knowledge OF "${cleanedTopic}", not ABOUT how to create quizzes on it
+3. EVERY question MUST have exactly 4 options - NO MORE, NO LESS
+4. EVERY option MUST be a non-empty string with at least 2 characters
+5. The correct answer must be one of the 4 options (index 0-3)
+6. Return ONLY a valid JSON array - NO markdown, NO explanations, NO extra text
 
 Difficulty Level: ${difficulty.toUpperCase()}
 ${difficultyInstructions[difficulty]}
 
 For EACH question:
-- Write a clear, specific question about "${cleanedTopic}"
+- Write a clear, specific question testing knowledge about "${cleanedTopic}"
 - Provide exactly 4 plausible answer options (all must be non-empty strings)
 - Mark which option (0, 1, 2, or 3) is correct
 - Provide a 2-3 sentence explanation
@@ -309,16 +253,7 @@ IMPORTANT:
 - Escape any quotes inside strings with backslash
 - Return ONLY the JSON array, nothing else`;
 
-    let responseText;
-    
-    // Generate with selected AI model
-    if (aiModel === "gemini") {
-      responseText = await generateWithGemini(prompt);
-    } else {
-      // DeepSeek (default)
-      const systemPrompt = "You are an expert educational quiz generator. Create high-quality, accurate multiple-choice questions. ALWAYS return ONLY valid JSON arrays with NO markdown, NO explanations, NO additional text. Ensure proper JSON formatting with no trailing commas.";
-      responseText = await generateWithDeepSeek(systemPrompt, prompt);
-    }
+    let responseText = await generateWithGemini(prompt);
 
     console.log(
       "Raw AI Response (first 500 chars):",
@@ -423,12 +358,14 @@ IMPORTANT:
           }`
         );
       }
-      
+
       // ✅ NEW: Validate option content
       q.options.forEach((option, optIndex) => {
         if (typeof option !== "string") {
           throw new Error(
-            `Question ${index + 1}, Option ${optIndex + 1}: must be a string, got ${typeof option}`
+            `Question ${index + 1}, Option ${
+              optIndex + 1
+            }: must be a string, got ${typeof option}`
           );
         }
         if (!option || !option.trim()) {
@@ -439,11 +376,13 @@ IMPORTANT:
         // Warn if option is suspiciously short (might be data corruption)
         if (option.trim().length < 2) {
           console.warn(
-            `⚠️ Question ${index + 1}, Option ${optIndex + 1}: Very short option: "${option}"`
+            `⚠️ Question ${index + 1}, Option ${
+              optIndex + 1
+            }: Very short option: "${option}"`
           );
         }
       });
-      
+
       if (
         typeof q.correctAnswer !== "number" ||
         q.correctAnswer < 0 ||
@@ -453,12 +392,14 @@ IMPORTANT:
           `Question ${index + 1} has invalid correctAnswer: ${q.correctAnswer}`
         );
       }
-      
+
       // ✅ NEW: Validate correct answer content
       const correctAnswerText = q.options[q.correctAnswer];
       if (!correctAnswerText || !correctAnswerText.trim()) {
         throw new Error(
-          `Question ${index + 1}: correct answer (Option ${q.correctAnswer + 1}) is empty`
+          `Question ${index + 1}: correct answer (Option ${
+            q.correctAnswer + 1
+          }) is empty`
         );
       }
     });
@@ -466,7 +407,7 @@ IMPORTANT:
     // Shuffle answer options randomly for each question
     const shuffledQuestions = questions.map((q, qIndex) => {
       const correctAnswerText = q.options[q.correctAnswer];
-      
+
       // ✅ Validate before shuffling
       if (!correctAnswerText || !correctAnswerText.trim()) {
         throw new Error(
@@ -486,7 +427,7 @@ IMPORTANT:
 
       // Find new index of correct answer after shuffling
       const newCorrectIndex = shuffledOptions.indexOf(correctAnswerText);
-      
+
       // ✅ Validate after shuffling
       if (newCorrectIndex === -1) {
         console.error(`❌ Question ${qIndex + 1} shuffling failed:`, {
@@ -495,7 +436,9 @@ IMPORTANT:
           shuffledOptions,
         });
         throw new Error(
-          `Question ${qIndex + 1}: Failed to find correct answer after shuffling. This indicates data corruption.`
+          `Question ${
+            qIndex + 1
+          }: Failed to find correct answer after shuffling. This indicates data corruption.`
         );
       }
 
@@ -513,3 +456,5 @@ IMPORTANT:
     throw new Error(`Failed to generate quiz: ${error.message}`);
   }
 };
+
+// PDF functionality removed - generateQuizFromPDFUrl has been deleted
