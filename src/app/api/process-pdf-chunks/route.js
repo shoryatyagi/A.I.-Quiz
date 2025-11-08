@@ -81,8 +81,8 @@ export async function POST(request) {
 }
 
 /**
- * Split text into chunks
- * Creates equal-sized chunks, one per question
+ * Split text into random chunks from the entire PDF
+ * Creates many small chunks then randomly selects the needed number
  */
 function createChunks(text, numberOfQuestions) {
   // Clean the text
@@ -91,44 +91,69 @@ function createChunks(text, numberOfQuestions) {
     .replace(/\n+/g, "\n") // Normalize newlines
     .trim();
 
-  // Calculate chunk size
-  const totalLength = cleanedText.length;
-  const chunkSize = Math.ceil(totalLength / numberOfQuestions);
-
-  const chunks = [];
-  let startIndex = 0;
-
-  for (let i = 0; i < numberOfQuestions; i++) {
-    let endIndex = startIndex + chunkSize;
-
-    // For the last chunk, take everything remaining
-    if (i === numberOfQuestions - 1) {
-      endIndex = totalLength;
-    } else {
-      // Try to break at a sentence or word boundary
-      // Look for period, question mark, or exclamation within next 100 chars
-      const searchEnd = Math.min(endIndex + 100, totalLength);
-      const substring = cleanedText.substring(endIndex, searchEnd);
-      const sentenceEnd = substring.search(/[.!?]\s/);
-      
-      if (sentenceEnd !== -1) {
-        endIndex = endIndex + sentenceEnd + 1;
-      } else {
-        // If no sentence boundary, try to break at a space
-        const spaceIndex = substring.indexOf(" ");
-        if (spaceIndex !== -1) {
-          endIndex = endIndex + spaceIndex;
-        }
-      }
-    }
-
-    const chunk = cleanedText.substring(startIndex, endIndex).trim();
-    if (chunk.length > 0) {
-      chunks.push(chunk);
-    }
-
-    startIndex = endIndex;
+  // Split into sentences first
+  const sentences = cleanedText.match(/[^.!?]+[.!?]+/g) || [cleanedText];
+  
+  if (sentences.length === 0) {
+    return [cleanedText];
   }
 
-  return chunks;
+  // Create many small chunks (3-5 sentences each)
+  const allChunks = [];
+  const sentencesPerChunk = 4; // Average chunk size
+  
+  for (let i = 0; i < sentences.length; i += sentencesPerChunk) {
+    const chunkSentences = sentences.slice(i, i + sentencesPerChunk);
+    const chunk = chunkSentences.join(" ").trim();
+    if (chunk.length > 50) { // Only include meaningful chunks
+      allChunks.push(chunk);
+    }
+  }
+
+  // If we don't have enough chunks, split larger
+  if (allChunks.length < numberOfQuestions) {
+    const minChunkSize = 200; // Minimum characters per chunk
+    const tempChunks = [];
+    
+    for (let i = 0; i < cleanedText.length; i += minChunkSize) {
+      const chunk = cleanedText.substring(i, i + minChunkSize).trim();
+      if (chunk.length > 50) {
+        tempChunks.push(chunk);
+      }
+    }
+    
+    if (tempChunks.length > allChunks.length) {
+      allChunks.length = 0;
+      allChunks.push(...tempChunks);
+    }
+  }
+
+  // Randomly select numberOfQuestions chunks
+  const selectedChunks = [];
+  const availableIndices = Array.from({ length: allChunks.length }, (_, i) => i);
+  
+  // Fisher-Yates shuffle to get random indices
+  for (let i = availableIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [availableIndices[i], availableIndices[j]] = [availableIndices[j], availableIndices[i]];
+  }
+
+  // Select the first numberOfQuestions indices
+  const selectedIndices = availableIndices.slice(0, Math.min(numberOfQuestions, allChunks.length));
+  
+  // Get chunks in their original order (sorted by index) for better context
+  selectedIndices.sort((a, b) => a - b);
+  
+  for (const index of selectedIndices) {
+    selectedChunks.push(allChunks[index]);
+  }
+
+  // If we still don't have enough, pad with the entire text
+  while (selectedChunks.length < numberOfQuestions) {
+    selectedChunks.push(cleanedText);
+  }
+
+  console.log(`📊 Created ${allChunks.length} total chunks, randomly selected ${selectedChunks.length}`);
+  
+  return selectedChunks;
 }
