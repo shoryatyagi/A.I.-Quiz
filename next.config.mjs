@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   webpack: (config, { isServer }) => {
     // Disable canvas for PDF parsing
     config.resolve.alias.canvas = false;

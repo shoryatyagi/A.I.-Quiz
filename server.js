@@ -2,11 +2,67 @@ const { createServer } = require("http");
 const { parse } = require("url");
 const next = require("next");
 const { Server } = require("socket.io");
-const { getRoomsCollection } = require("./src/lib/mongodb");
+const { MongoClient } = require("mongodb");
+
+// Inline MongoDB connection for standalone Docker build
+let mongoClient;
+let mongoDb;
+
+async function connectToDatabase() {
+  if (mongoDb) {
+    return { client: mongoClient, db: mongoDb };
+  }
+
+  const uri = process.env.MONGODB_URI;
+  const dbName = process.env.MONGODB_DB_NAME;
+
+  try {
+    mongoClient = new MongoClient(uri);
+    await mongoClient.connect();
+    console.log("Server: Connected to MongoDB");
+
+    mongoDb = mongoClient.db(dbName);
+
+    // Create indexes for better performance
+    await mongoDb
+      .collection("rooms")
+      .createIndex({ roomCode: 1 }, { unique: true });
+    await mongoDb
+      .collection("rooms")
+      .createIndex({ createdAt: 1 }, { expireAfterSeconds: 86400 }); // Auto-delete after 24 hours
+
+    return { client: mongoClient, db: mongoDb };
+  } catch (error) {
+    console.error("Server: MongoDB connection error:", error);
+    throw error;
+  }
+}
+
+async function getRoomsCollection() {
+  const { db } = await connectToDatabase();
+  return db.collection("rooms");
+}
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0"; // Listen on all network interfaces
 const port = process.env.PORT || 3000;
+
+// Security: Allowed origins for CORS
+const getAllowedOrigins = () => {
+  const origins = ["http://localhost:3000", "http://127.0.0.1:3000"];
+
+  // Add production URL if set
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+  }
+
+  // Add custom allowed origins from env
+  if (process.env.ALLOWED_ORIGINS) {
+    origins.push(...process.env.ALLOWED_ORIGINS.split(","));
+  }
+
+  return origins;
+};
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -14,9 +70,60 @@ const handle = app.getRequestHandler();
 // Store socket ID to room mapping in memory (lightweight)
 const socketRooms = new Map();
 
+// Rate limiting for socket connections
+const connectionAttempts = new Map();
+const MAX_CONNECTIONS_PER_IP = 10;
+const CONNECTION_WINDOW_MS = 60000; // 1 minute
+
+const checkRateLimit = (ip) => {
+  const now = Date.now();
+  const attempts = connectionAttempts.get(ip) || [];
+
+  // Clean old attempts
+  const recentAttempts = attempts.filter(
+    (time) => now - time < CONNECTION_WINDOW_MS
+  );
+
+  if (recentAttempts.length >= MAX_CONNECTIONS_PER_IP) {
+    return false;
+  }
+
+  recentAttempts.push(now);
+  connectionAttempts.set(ip, recentAttempts);
+  return true;
+};
+
+// Clean up rate limit map periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, attempts] of connectionAttempts.entries()) {
+    const recentAttempts = attempts.filter(
+      (time) => now - time < CONNECTION_WINDOW_MS
+    );
+    if (recentAttempts.length === 0) {
+      connectionAttempts.delete(ip);
+    } else {
+      connectionAttempts.set(ip, recentAttempts);
+    }
+  }
+}, 60000);
+
 app.prepare().then(() => {
   const server = createServer(async (req, res) => {
     try {
+      // Security headers
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("X-Frame-Options", "DENY");
+      res.setHeader("X-XSS-Protection", "1; mode=block");
+      res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+
+      if (!dev) {
+        res.setHeader(
+          "Strict-Transport-Security",
+          "max-age=31536000; includeSubDomains"
+        );
+      }
+
       const parsedUrl = parse(req.url, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
@@ -26,11 +133,36 @@ app.prepare().then(() => {
     }
   });
 
+  const allowedOrigins = getAllowedOrigins();
+
   const io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: dev ? "*" : allowedOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
+    // Security settings
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    maxHttpBufferSize: 1e6, // 1MB max message size
+    connectTimeout: 45000,
+  });
+
+  // Socket.IO middleware for rate limiting
+  io.use((socket, next) => {
+    const clientIp =
+      socket.handshake.headers["x-forwarded-for"] ||
+      socket.handshake.address ||
+      "unknown";
+
+    if (!checkRateLimit(clientIp)) {
+      console.warn(`⚠️ Rate limit exceeded for IP: ${clientIp}`);
+      return next(
+        new Error("Too many connection attempts. Please try again later.")
+      );
+    }
+
+    next();
   });
 
   io.on("connection", (socket) => {
@@ -147,7 +279,9 @@ app.prepare().then(() => {
 
     socket.on("remove-player", async ({ roomCode, playerName }) => {
       try {
-        console.log(`🚫 Host requesting to remove player: ${playerName} from room: ${roomCode}`);
+        console.log(
+          `🚫 Host requesting to remove player: ${playerName} from room: ${roomCode}`
+        );
 
         const rooms = await getRoomsCollection();
         const room = await rooms.findOne({ roomCode });
@@ -205,7 +339,10 @@ app.prepare().then(() => {
           totalPlayers: updatedRoom.players.length,
         });
 
-        console.log(`✅ Removed ${playerName} from room ${roomCode}. Remaining players:`, playerList);
+        console.log(
+          `✅ Removed ${playerName} from room ${roomCode}. Remaining players:`,
+          playerList
+        );
       } catch (error) {
         console.error("Error removing player:", error);
         socket.emit("error", { message: "Failed to remove player" });
@@ -512,6 +649,30 @@ app.prepare().then(() => {
     });
   });
 
+  // Graceful shutdown
+  const gracefulShutdown = async (signal) => {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+
+    // Close all socket connections
+    io.close(() => {
+      console.log("Socket.IO connections closed");
+    });
+
+    server.close(() => {
+      console.log("HTTP server closed");
+      process.exit(0);
+    });
+
+    // Force exit after 10 seconds
+    setTimeout(() => {
+      console.error("Forcing shutdown after timeout");
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
   server
     .once("error", (err) => {
       console.error(err);
@@ -519,5 +680,6 @@ app.prepare().then(() => {
     })
     .listen(port, () => {
       console.log(`> Ready on http://${hostname}:${port}`);
+      console.log(`> Environment: ${dev ? "development" : "production"}`);
     });
 });

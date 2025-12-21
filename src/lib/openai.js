@@ -1,12 +1,20 @@
 import OpenAI from "openai";
 
 // Groq configuration using OpenAI-compatible API
-const groqClient = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-});
+// Lazy initialization to avoid build-time errors
+let groqClient = null;
 
-const GROQ_MODEL = process.env.GROQ_MODEL;
+const getGroqClient = () => {
+  if (!groqClient) {
+    groqClient = new OpenAI({
+      apiKey: process.env.GROQ_API_KEY || "dummy-key-for-build",
+      baseURL: "https://api.groq.com/openai/v1",
+    });
+  }
+  return groqClient;
+};
+
+const getGroqModel = () => process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 /**
  * Generate quiz using Groq API
@@ -21,13 +29,16 @@ async function generateWithGroq(prompt, maxRetries = 2) {
     );
   }
 
+  const client = getGroqClient();
+  const model = getGroqModel();
+
   let retryCount = 0;
   while (retryCount <= maxRetries) {
     try {
-      console.log(`🚀 Using Groq model: ${GROQ_MODEL}`);
+      console.log(`🚀 Using Groq model: ${model}`);
 
-      const response = await groqClient.chat.completions.create({
-        model: GROQ_MODEL,
+      const response = await client.chat.completions.create({
+        model: model,
         messages: [
           {
             role: "user",
