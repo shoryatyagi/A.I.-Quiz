@@ -3,7 +3,7 @@ import { generateQuizFromPrompt } from "@/lib/openai";
 
 export async function POST(request) {
   try {
-    const { quizName, topic, numberOfQuestions, difficulty } =
+    const { quizName, topic, numberOfQuestions, difficulty, model = "gemini" } =
       await request.json();
 
     // Validate inputs
@@ -26,13 +26,14 @@ export async function POST(request) {
       );
     }
 
-    console.log(`🤖 Generating quiz using Gemini AI`);
+    console.log(`🤖 Generating quiz using ${model === 'ollama' ? 'Ollama' : 'Gemini'} AI`);
 
-    // Generate quiz using Gemini AI
+    // Generate quiz using selected AI model
     const quiz = await generateQuizFromPrompt(
       topic.trim(),
       numberOfQuestions,
-      difficulty
+      difficulty,
+      model
     );
 
     return NextResponse.json({

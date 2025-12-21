@@ -50,6 +50,7 @@ CLOUDINARY_API_SECRET=DWEUHEjccTPLxdsNlhUc7KySwbw
 ### If your Vercel URL is: `https://ai-quiz-shoryatyagi.vercel.app`
 
 Then set:
+
 ```bash
 NEXT_PUBLIC_WEBSOCKET_URL=https://ai-quiz-shoryatyagi.vercel.app
 NEXT_PUBLIC_SITE_URL=https://ai-quiz-shoryatyagi.vercel.app
@@ -59,6 +60,7 @@ NEXTAUTH_URL=https://ai-quiz-shoryatyagi.vercel.app
 ### If your Vercel URL is: `https://quiz-app-theta-nine.vercel.app`
 
 Then set:
+
 ```bash
 NEXT_PUBLIC_WEBSOCKET_URL=https://quiz-app-theta-nine.vercel.app
 NEXT_PUBLIC_SITE_URL=https://quiz-app-theta-nine.vercel.app
@@ -70,6 +72,7 @@ NEXTAUTH_URL=https://quiz-app-theta-nine.vercel.app
 ## 🔧 Step-by-Step Deployment
 
 ### Step 1: Deploy to Vercel
+
 1. Go to https://vercel.com
 2. Click "Add New" → "Project"
 3. Import your GitHub repository
@@ -77,6 +80,7 @@ NEXTAUTH_URL=https://quiz-app-theta-nine.vercel.app
 5. **Note your Vercel URL** (e.g., `https://your-app-name.vercel.app`)
 
 ### Step 2: Add Environment Variables
+
 1. Go to your Vercel project dashboard
 2. Click "Settings" tab
 3. Click "Environment Variables" in sidebar
@@ -89,6 +93,7 @@ NEXTAUTH_URL=https://quiz-app-theta-nine.vercel.app
 6. **Important:** Replace `https://your-app-name.vercel.app` with your actual Vercel URL
 
 ### Step 3: Update Google OAuth
+
 1. Go to https://console.cloud.google.com
 2. Select your project
 3. Go to "Credentials"
@@ -100,6 +105,7 @@ NEXTAUTH_URL=https://quiz-app-theta-nine.vercel.app
 6. Click "Save"
 
 ### Step 4: Redeploy
+
 1. Go back to Vercel dashboard
 2. Click "Deployments" tab
 3. Click "..." on latest deployment
@@ -111,11 +117,13 @@ NEXTAUTH_URL=https://quiz-app-theta-nine.vercel.app
 ## ⚠️ Important Notes
 
 ### MongoDB Atlas ✅
+
 - Your MongoDB Atlas is already configured!
 - Connection string: `mongodb+srv://shoryatyagi29_db_user:VxyaDTD1BtWFK8cK@cluster0.beqqqrj.mongodb.net/`
 - Make sure your MongoDB Atlas allows connections from **0.0.0.0/0** (all IPs) for Vercel
 
 ### To Allow Vercel IPs in MongoDB Atlas:
+
 1. Go to https://cloud.mongodb.com
 2. Click "Network Access" in sidebar
 3. Click "Add IP Address"
@@ -123,6 +131,7 @@ NEXTAUTH_URL=https://quiz-app-theta-nine.vercel.app
 5. Click "Confirm"
 
 ### WebSocket Limitations on Vercel
+
 - Vercel has limitations with WebSockets for real-time multiplayer
 - Consider using **Vercel Blob** or **Pusher** for production multiplayer
 - Or deploy the WebSocket server separately (e.g., Railway, Render)
@@ -132,6 +141,7 @@ NEXTAUTH_URL=https://quiz-app-theta-nine.vercel.app
 ## 🎯 Quick Checklist
 
 Before deploying:
+
 - [ ] Get your Vercel deployment URL
 - [ ] Add all environment variables in Vercel
 - [ ] Replace `your-app-name.vercel.app` with actual URL
@@ -140,6 +150,7 @@ Before deploying:
 - [ ] Redeploy after adding environment variables
 
 After deploying:
+
 - [ ] Test login with Google
 - [ ] Test PDF upload
 - [ ] Test AI quiz generation
@@ -151,6 +162,7 @@ After deploying:
 ## 🔐 Keep Your .env.local for Local Development
 
 Your current `.env.local` file should stay as is for local development:
+
 - Keep `localhost:3000` URLs
 - Keep local MongoDB if you want to test locally
 - Don't commit this file to Git!
@@ -159,27 +171,31 @@ Your current `.env.local` file should stay as is for local development:
 
 ## 📊 Environment Variables Summary
 
-| Variable | Local (Development) | Vercel (Production) |
-|----------|-------------------|-------------------|
-| NEXT_PUBLIC_WEBSOCKET_URL | http://localhost:3000 | https://your-app-name.vercel.app |
-| NEXT_PUBLIC_SITE_URL | http://localhost:3000 | https://your-app-name.vercel.app |
-| NEXTAUTH_URL | http://localhost:3000 | https://your-app-name.vercel.app |
-| MONGODB_URI | mongodb://localhost:27017 (optional) | mongodb+srv://shoryatyagi29... (same as yours) |
+| Variable                  | Local (Development)                  | Vercel (Production)                            |
+| ------------------------- | ------------------------------------ | ---------------------------------------------- |
+| NEXT_PUBLIC_WEBSOCKET_URL | http://localhost:3000                | https://your-app-name.vercel.app               |
+| NEXT_PUBLIC_SITE_URL      | http://localhost:3000                | https://your-app-name.vercel.app               |
+| NEXTAUTH_URL              | http://localhost:3000                | https://your-app-name.vercel.app               |
+| MONGODB_URI               | mongodb://localhost:27017 (optional) | mongodb+srv://shoryatyagi29... (same as yours) |
 
 ---
 
 ## 🆘 Troubleshooting
 
 ### Issue: "MongoDB connection failed"
+
 **Solution:** Allow 0.0.0.0/0 in MongoDB Atlas Network Access
 
 ### Issue: "Google OAuth error"
+
 **Solution:** Add Vercel URL to Google Console authorized redirect URIs
 
 ### Issue: "Multiplayer not working"
+
 **Solution:** Vercel doesn't fully support WebSockets. Consider deploying WebSocket server separately.
 
 ### Issue: "Environment variables not working"
+
 **Solution:** Redeploy after adding environment variables
 
 ---
@@ -193,4 +209,3 @@ Since Vercel has WebSocket limitations, for production multiplayer:
 3. **Option 3:** Use Vercel Edge Functions with polling
 
 For now, deploy and test. Solo mode will work perfectly!
-

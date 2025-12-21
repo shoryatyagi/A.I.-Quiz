@@ -10,7 +10,7 @@ export const maxDuration = 60;
  */
 export async function POST(request) {
   try {
-    const { chunks, numberOfQuestions, quizName } = await request.json();
+    const { chunks, numberOfQuestions, quizName, model = "gemini" } = await request.json();
 
     // Validate chunks
     if (!Array.isArray(chunks) || chunks.length === 0) {
@@ -41,8 +41,9 @@ export async function POST(request) {
 
     console.log(`📊 Using ${selectedChunks.length} chunks (${combinedText.length} characters total)`);
 
-    // Generate quiz using Gemini
-    const quiz = await generateQuizFromText(combinedText, numQuestions);
+    // Generate quiz using selected AI model
+    console.log(`🤖 Using ${model === 'ollama' ? 'Ollama' : 'Gemini'} AI for quiz generation`);
+    const quiz = await generateQuizFromText(combinedText, numQuestions, model);
 
     console.log(`✅ Quiz generated successfully: ${quiz.length} questions`);
 

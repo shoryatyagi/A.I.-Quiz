@@ -6,6 +6,78 @@ if (process.env.GEMINI_API_KEY) {
   geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 }
 
+// Ollama configuration
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
+
+/**
+ * Generate quiz using Ollama local LLM
+ * @param {string} prompt - The prompt for quiz generation
+ * @param {string} model - The Ollama model to use
+ * @param {number} maxRetries - Maximum retry attempts
+ * @returns {Promise<string>} - AI response text
+ */
+async function generateWithOllama(
+  prompt,
+  model = OLLAMA_MODEL,
+  maxRetries = 2
+) {
+  let retryCount = 0;
+  while (retryCount <= maxRetries) {
+    try {
+      console.log(`🦙 Using Ollama model: ${model}`);
+
+      const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model,
+          prompt: prompt,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Ollama API returned ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.response) {
+        throw new Error("No response from Ollama");
+      }
+
+      return data.response;
+    } catch (apiError) {
+      console.error(
+        `❌ Ollama API Error (attempt ${retryCount + 1}/${maxRetries + 1}):`,
+        apiError
+      );
+
+      if (retryCount < maxRetries) {
+        retryCount++;
+        console.log(
+          `⏳ Retrying in 2 seconds... (attempt ${retryCount + 1}/${
+            maxRetries + 1
+          })`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        continue;
+      } else {
+        throw new Error(
+          `Ollama API Error: ${
+            apiError.message || "Unknown error"
+          }. Make sure Ollama is running locally at ${OLLAMA_BASE_URL}`
+        );
+      }
+    }
+  }
+}
+
 /**
  * Generate quiz using Google Gemini
  * @param {string} prompt - The prompt for quiz generation
@@ -81,32 +153,59 @@ async function generateWithGemini(prompt, maxRetries = 2) {
   }
 }
 
-export const generateQuizFromText = async (text, numberOfQuestions = 10) => {
+export const generateQuizFromText = async (
+  text,
+  numberOfQuestions = 10,
+  model = "gemini"
+) => {
   try {
-    console.log(`🤖 Using Gemini AI for quiz generation`);
+    const usingOllama = model === "ollama";
+    console.log(
+      `🤖 Using ${usingOllama ? "Ollama" : "Gemini"} AI for quiz generation`
+    );
 
-    const prompt = `You are an AI quiz generator. Analyze the following content and generate exactly ${numberOfQuestions} multiple-choice questions. Each question should have:
-- A clear, specific question
-- Four answer options (labeled A, B, C, D)
-- One correct answer (marked)
-- A brief explanation (2-3 sentences)
+    const prompt = `Analyze the following content and create EXACTLY ${numberOfQuestions} multiple-choice quiz questions based on the key concepts and facts in the text.
 
-Ensure questions are fact-based, diverse, and relevant to the document content. Format the output as a valid JSON array.
+🎯 CRITICAL: You MUST generate EXACTLY ${numberOfQuestions} questions. NOT ${
+      numberOfQuestions - 1
+    }, NOT ${numberOfQuestions + 1}, but EXACTLY ${numberOfQuestions} questions.
 
-Content to analyze:
-${text}
+CONTENT TO ANALYZE:
+${text.substring(0, 8000)}
 
-Return ONLY a JSON array in this exact format:
+YOUR TASK:
+Generate ${numberOfQuestions} questions that test understanding of the content above. Each question must have 4 options and 1 correct answer.
+
+KEY RULES:
+- Questions must be based ONLY on the actual content provided above
+- If content is about a sport (soccer, football, basketball, etc.), ask about the sport itself - rules, players, teams, tournaments, tactics, history
+- If content is about a programming language, ask about syntax, concepts, libraries, features
+- Focus on the SUBJECT MATTER in the content, not meta topics
+- Do NOT ask "Which country..." if the content is about a sport - focus on the sport aspects
+
+OUTPUT FORMAT:
+Return a JSON array with this structure:
 [
   {
-    "question": "What is...",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "question": "Your question text here based on the content",
+    "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
     "correctAnswer": 0,
-    "explanation": "This is correct because..."
+    "explanation": "Why this answer is correct"
   }
-]`;
+]
 
-    let responseText = await generateWithGemini(prompt);
+RULES:
+- Generate EXACTLY ${numberOfQuestions} questions - count them before submitting
+- correctAnswer is a number: 0 for first option, 1 for second, 2 for third, 3 for fourth
+- Do NOT use letters like "A", "B", "C", "D" - use numbers 0, 1, 2, 3
+- Do NOT add "Option A:" or similar prefixes to the options
+- Questions must be based on the actual content provided, not generic examples
+- Return ONLY the JSON array, no other text or explanations`;
+
+    let responseText =
+      model === "ollama"
+        ? await generateWithOllama(prompt, OLLAMA_MODEL)
+        : await generateWithGemini(prompt);
 
     // Extract JSON from markdown code blocks if present
     let jsonText = responseText;
@@ -123,15 +222,276 @@ Return ONLY a JSON array in this exact format:
       .replace(/\s*<｜.*$/g, "") // Remove anything starting with <｜
       .trim();
 
-    const questions = JSON.parse(jsonText);
+    // Clean up common JSON issues - MINIMALLY to prevent corruption
+    jsonText = jsonText
+      .replace(/,(\s*[}\]])/g, "$1") // Remove trailing commas before } and ]
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
+      .trim();
+
+    console.log("Cleaned JSON (first 500 chars):", jsonText.substring(0, 500));
+
+    let questions;
+    try {
+      questions = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error("❌ JSON Parse Error:", parseError.message);
+      console.error(
+        "📄 Problematic JSON (first 1000 chars):",
+        jsonText.substring(0, 1000)
+      );
+
+      // Try extraction of JSON array only
+      try {
+        console.log("🔧 Attempting to extract JSON array...");
+
+        // Remove any text before first [ and after last ]
+        const firstBracket = jsonText.indexOf("[");
+        const lastBracket = jsonText.lastIndexOf("]");
+
+        if (firstBracket === -1 || lastBracket === -1) {
+          throw new Error("No JSON array found in response");
+        }
+
+        const extractedJson = jsonText.substring(firstBracket, lastBracket + 1);
+
+        // Minimal cleanup - only remove control chars and newlines
+        const fixedJson = extractedJson
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
+          .replace(/[\r\n\t]/g, " ") // Replace newlines, carriage returns, tabs with space
+          .replace(/,(\s*[}\]])/g, "$1") // Remove trailing commas
+          .trim();
+
+        console.log(
+          "🔧 Extracted JSON (first 500 chars):",
+          fixedJson.substring(0, 500)
+        );
+
+        questions = JSON.parse(fixedJson);
+        console.log("✅ Successfully parsed after extraction!");
+      } catch (secondError) {
+        console.error("❌ Second parse attempt failed:", secondError.message);
+        throw new Error(
+          `Failed to parse AI response as JSON.\n` +
+            `Original error: ${parseError.message}\n` +
+            `Second attempt error: ${secondError.message}\n` +
+            `Response preview: ${responseText.substring(0, 300)}...`
+        );
+      }
+    }
 
     // Validate the structure
     if (!Array.isArray(questions) || questions.length === 0) {
-      throw new Error("Invalid quiz format");
+      throw new Error("Invalid quiz format: Expected an array of questions");
+    }
+
+    console.log(`✅ Parsed ${questions.length} questions successfully`);
+
+    // ✅ HANDLE QUESTION COUNT MISMATCH
+    if (questions.length !== numberOfQuestions) {
+      console.warn(
+        `⚠️ AI generated ${questions.length} questions but ${numberOfQuestions} were requested`
+      );
+
+      if (questions.length > numberOfQuestions) {
+        console.log(
+          `🔧 Trimming ${questions.length - numberOfQuestions} extra questions`
+        );
+        questions = questions.slice(0, numberOfQuestions);
+      } else if (questions.length < numberOfQuestions) {
+        const missingCount = numberOfQuestions - questions.length;
+        console.log(
+          `🔧 Generating ${missingCount} additional questions to reach ${numberOfQuestions}`
+        );
+
+        try {
+          const additionalPrompt = `Analyze the following content and create EXACTLY ${missingCount} MORE multiple-choice quiz questions.
+
+CONTENT TO ANALYZE:
+${text.substring(0, 8000)}
+
+🎯 CRITICAL: Generate EXACTLY ${missingCount} questions to add to an existing quiz.
+
+OUTPUT FORMAT:
+[
+  {
+    "question": "Your question text here",
+    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+    "correctAnswer": 0,
+    "explanation": "Why this answer is correct"
+  }
+]
+
+Return ONLY the JSON array, no markdown, no extra text.`;
+
+          let additionalResponseText =
+            model === "ollama"
+              ? await generateWithOllama(additionalPrompt, OLLAMA_MODEL)
+              : await generateWithGemini(additionalPrompt);
+
+          let additionalJsonText = additionalResponseText;
+          if (additionalResponseText.includes("```json")) {
+            additionalJsonText = additionalResponseText
+              .split("```json")[1]
+              .split("```")[0]
+              .trim();
+          } else if (additionalResponseText.includes("```")) {
+            additionalJsonText = additionalResponseText
+              .split("```")[1]
+              .split("```")[0]
+              .trim();
+          }
+
+          additionalJsonText = additionalJsonText
+            .replace(/<[^>]*>/g, "")
+            .replace(/｜[^｜]*｜/g, "")
+            .replace(/\s*<｜.*$/g, "")
+            .replace(/,(\s*[}\]])/g, "$1")
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+            .trim();
+
+          let additionalQuestions;
+          try {
+            additionalQuestions = JSON.parse(additionalJsonText);
+          } catch (parseError) {
+            const firstBracket = additionalJsonText.indexOf("[");
+            const lastBracket = additionalJsonText.lastIndexOf("]");
+            if (firstBracket !== -1 && lastBracket !== -1) {
+              const extractedJson = additionalJsonText.substring(
+                firstBracket,
+                lastBracket + 1
+              );
+              const fixedJson = extractedJson
+                .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+                .replace(/[\r\n\t]/g, " ")
+                .replace(/,(\s*[}\]])/g, "$1")
+                .trim();
+              additionalQuestions = JSON.parse(fixedJson);
+            } else {
+              throw parseError;
+            }
+          }
+
+          if (
+            Array.isArray(additionalQuestions) &&
+            additionalQuestions.length > 0
+          ) {
+            const questionsToAdd = additionalQuestions.slice(0, missingCount);
+            questions = questions.concat(questionsToAdd);
+            console.log(
+              `✅ Successfully added ${questionsToAdd.length} questions. Total: ${questions.length}`
+            );
+          } else {
+            console.warn(
+              `⚠️ Could not generate additional questions. Proceeding with ${questions.length} questions.`
+            );
+          }
+        } catch (retryError) {
+          console.error(
+            `❌ Failed to generate additional questions:`,
+            retryError
+          );
+          console.log(
+            `⚠️ Proceeding with ${questions.length} questions instead of ${numberOfQuestions}`
+          );
+        }
+      }
+    }
+
+    // Validate and clean each question
+    const validQuestions = questions.filter((q, index) => {
+      // Check if question has all required fields
+      if (!q.question || !Array.isArray(q.options)) {
+        console.warn(
+          `⚠️ Skipping invalid question at index ${index}: Missing question or options`
+        );
+        return false;
+      }
+
+      // Clean up options - remove "Option A:" prefix only
+      q.options = q.options.map((opt) => {
+        if (typeof opt === "string") {
+          return opt
+            .replace(/^Option [A-D]:\s*/i, "") // Remove "Option A:"
+            .trim();
+        }
+        return opt;
+      });
+
+      // Check if options are valid
+      if (
+        q.options.length !== 4 ||
+        q.options.some(
+          (opt) => !opt || typeof opt !== "string" || opt.trim() === ""
+        )
+      ) {
+        console.warn(
+          `⚠️ Skipping question with invalid options at index ${index}`
+        );
+        return false;
+      }
+
+      // Convert correctAnswer to number if it's a letter (A, B, C, D)
+      if (typeof q.correctAnswer === "string") {
+        const letterToIndex = {
+          A: 0,
+          B: 1,
+          C: 2,
+          D: 3,
+          a: 0,
+          b: 1,
+          c: 2,
+          d: 3,
+        };
+        if (letterToIndex.hasOwnProperty(q.correctAnswer)) {
+          q.correctAnswer = letterToIndex[q.correctAnswer];
+          console.log(
+            `✅ Converted correctAnswer "${q.correctAnswer}" to index ${
+              letterToIndex[q.correctAnswer]
+            } for question ${index + 1}`
+          );
+        } else {
+          // Try parsing as number
+          const parsed = parseInt(q.correctAnswer);
+          if (!isNaN(parsed)) {
+            q.correctAnswer = parsed;
+          } else {
+            console.warn(
+              `⚠️ Skipping question with invalid correctAnswer at index ${index}: "${q.correctAnswer}"`
+            );
+            return false;
+          }
+        }
+      }
+
+      // Check if correctAnswer is valid number
+      if (
+        typeof q.correctAnswer !== "number" ||
+        q.correctAnswer < 0 ||
+        q.correctAnswer >= q.options.length
+      ) {
+        console.warn(
+          `⚠️ Skipping question with invalid correctAnswer at index ${index}: ${q.correctAnswer}`
+        );
+        return false;
+      }
+
+      return true;
+    });
+
+    if (validQuestions.length === 0) {
+      throw new Error("No valid questions generated. Please try again.");
+    }
+
+    if (validQuestions.length < questions.length) {
+      console.log(
+        `⚠️ Filtered out ${
+          questions.length - validQuestions.length
+        } invalid questions`
+      );
     }
 
     // Shuffle answer options randomly for each question
-    const shuffledQuestions = questions.map((q) => {
+    const shuffledQuestions = validQuestions.map((q) => {
       const correctAnswerText = q.options[q.correctAnswer];
 
       // Shuffle the options array
@@ -148,12 +508,16 @@ Return ONLY a JSON array in this exact format:
       const newCorrectIndex = shuffledOptions.indexOf(correctAnswerText);
 
       return {
-        ...q,
+        question: q.question,
         options: shuffledOptions,
         correctAnswer: newCorrectIndex,
+        explanation: q.explanation || "No explanation provided.",
       };
     });
 
+    console.log(
+      `✅ Successfully generated ${shuffledQuestions.length} valid questions`
+    );
     return shuffledQuestions;
   } catch (error) {
     console.error("Error generating quiz:", error);
@@ -164,10 +528,14 @@ Return ONLY a JSON array in this exact format:
 export const generateQuizFromPrompt = async (
   topic,
   numberOfQuestions = 10,
-  difficulty = "medium"
+  difficulty = "medium",
+  model = "gemini"
 ) => {
   try {
-    console.log(`🤖 Using Gemini AI for quiz generation`);
+    const usingOllama = model === "ollama";
+    console.log(
+      `🤖 Using ${usingOllama ? "Ollama" : "Gemini"} AI for quiz generation`
+    );
 
     // Clean the topic to remove common instruction phrases
     // Users now enter the topic separately from the number field,
@@ -198,23 +566,34 @@ export const generateQuizFromPrompt = async (
       hard: "Create advanced, challenging questions that require deep understanding, analysis, and critical thinking. Include complex scenarios.",
     };
 
-    const prompt = `You are an expert quiz generator. Create exactly ${numberOfQuestions} multiple-choice questions about the topic: "${cleanedTopic}"
+    const prompt = `You are an expert quiz generator. Create EXACTLY ${numberOfQuestions} multiple-choice questions about the topic: "${cleanedTopic}"
 
-TOPIC FOCUS:
-- If the topic is "football", create questions about the sport of football (rules, history, famous players, teams, tournaments)
-- If the topic is "Python", create questions about Python programming language
-- If the topic is "History", create questions about historical events and facts
+🎯 CRITICAL: You MUST generate EXACTLY ${numberOfQuestions} questions. NOT ${
+      numberOfQuestions - 1
+    }, NOT ${numberOfQuestions + 1}, but EXACTLY ${numberOfQuestions} questions.
+
+TOPIC FOCUS AND INTERPRETATION:
+- If topic is "soccer" or "football": Create questions about the SPORT itself - rules, gameplay, famous players, clubs/teams, leagues, tournaments (World Cup, Champions League, etc.), tactics, positions, equipment, history of the sport
+- If topic is "Python": Create questions about the Python programming language - syntax, libraries, concepts, functions
+- If topic is "History": Create questions about historical events, dates, figures, civilizations
+- If topic is "Science": Create questions about scientific concepts, discoveries, principles, theories
+- If topic is a subject/field: Create questions testing knowledge OF that subject/field
+
+KEY RULES:
 - ALL questions must be DIRECTLY RELATED to the subject matter of "${cleanedTopic}"
+- Questions should test knowledge ABOUT "${cleanedTopic}" as a subject/topic/field
 - DO NOT create meta questions about quizzes, AI, or question generation itself
+- DO NOT ask "Which country..." when the topic is a sport - instead ask about teams, players, tournaments, rules, etc.
 - Focus ONLY on factual knowledge about "${cleanedTopic}"
 
 CRITICAL REQUIREMENTS:
-1. Create questions SPECIFICALLY about the subject matter of "${cleanedTopic}" itself
-2. Questions should test knowledge OF "${cleanedTopic}", not ABOUT how to create quizzes on it
-3. EVERY question MUST have exactly 4 options - NO MORE, NO LESS
-4. EVERY option MUST be a non-empty string with at least 2 characters
-5. The correct answer must be one of the 4 options (index 0-3)
-6. Return ONLY a valid JSON array - NO markdown, NO explanations, NO extra text
+1. Generate EXACTLY ${numberOfQuestions} questions - count them before submitting
+2. Create questions SPECIFICALLY about the subject matter of "${cleanedTopic}" itself
+3. Questions should test knowledge OF "${cleanedTopic}", not ABOUT how to create quizzes on it
+4. EVERY question MUST have exactly 4 options - NO MORE, NO LESS
+5. EVERY option MUST be a non-empty string with at least 2 characters
+6. The correct answer must be one of the 4 options (index 0-3)
+7. Return ONLY a valid JSON array - NO markdown, NO explanations, NO extra text
 
 Difficulty Level: ${difficulty.toUpperCase()}
 ${difficultyInstructions[difficulty]}
@@ -225,21 +604,35 @@ For EACH question:
 - Mark which option (0, 1, 2, or 3) is correct
 - Provide a 2-3 sentence explanation
 
-EXACT OUTPUT FORMAT (no deviations):
+EXAMPLE OUTPUT FORMAT (adapt to your topic):
+Topic "Soccer/Football" examples:
 [
   {
-    "question": "What is...",
-    "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
+    "question": "Which club has won the most UEFA Champions League titles?",
+    "options": ["Real Madrid", "Barcelona", "AC Milan", "Bayern Munich"],
     "correctAnswer": 0,
-    "explanation": "This is correct because..."
+    "explanation": "Real Madrid has won the UEFA Champions League 14 times, more than any other club."
   },
   {
-    "question": "When did...",
-    "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
-    "correctAnswer": 2,
-    "explanation": "This is correct because..."
+    "question": "What is the standard duration of a professional soccer match?",
+    "options": ["80 minutes", "90 minutes", "100 minutes", "120 minutes"],
+    "correctAnswer": 1,
+    "explanation": "A standard professional soccer match consists of two 45-minute halves, totaling 90 minutes."
   }
 ]
+
+Topic "Python Programming" examples:
+[
+  {
+    "question": "Which keyword is used to define a function in Python?",
+    "options": ["func", "define", "def", "function"],
+    "correctAnswer": 2,
+    "explanation": "The 'def' keyword is used to define functions in Python."
+  }
+]
+
+DO NOT include any prefixes like "A.", "B.", "C.", "D." or "Option A:", "Option B:" in the options.
+Just provide the plain answer text.
 
 VALIDATION CHECKS:
 - Exactly ${numberOfQuestions} questions in array
@@ -253,7 +646,10 @@ IMPORTANT:
 - Escape any quotes inside strings with backslash
 - Return ONLY the JSON array, nothing else`;
 
-    let responseText = await generateWithGemini(prompt);
+    let responseText =
+      model === "ollama"
+        ? await generateWithOllama(prompt, OLLAMA_MODEL)
+        : await generateWithGemini(prompt);
 
     console.log(
       "Raw AI Response (first 500 chars):",
@@ -341,6 +737,135 @@ IMPORTANT:
 
     console.log(`✅ Parsed ${questions.length} questions successfully`);
 
+    // ✅ HANDLE QUESTION COUNT MISMATCH
+    if (questions.length !== numberOfQuestions) {
+      console.warn(
+        `⚠️ AI generated ${questions.length} questions but ${numberOfQuestions} were requested`
+      );
+
+      if (questions.length > numberOfQuestions) {
+        // If we got more than requested, trim to exact count
+        console.log(
+          `🔧 Trimming ${questions.length - numberOfQuestions} extra questions`
+        );
+        questions = questions.slice(0, numberOfQuestions);
+      } else if (questions.length < numberOfQuestions) {
+        // Generate missing questions
+        const missingCount = numberOfQuestions - questions.length;
+        console.log(
+          `🔧 Generating ${missingCount} additional questions to reach ${numberOfQuestions}`
+        );
+
+        try {
+          const additionalPrompt = `You are an expert quiz generator. Create EXACTLY ${missingCount} MORE multiple-choice questions about the topic: "${cleanedTopic}"
+
+🎯 CRITICAL: You MUST generate EXACTLY ${missingCount} questions to add to an existing quiz.
+
+TOPIC INTERPRETATION:
+- If topic is "soccer" or "football": Create questions about the SPORT itself - rules, gameplay, famous players, clubs/teams, leagues, tournaments, tactics, positions
+- If topic is a subject/field: Create questions testing knowledge OF that subject/field
+- DO NOT ask "Which country..." when the topic is a sport - focus on sport-specific questions
+- Focus ONLY on factual knowledge about "${cleanedTopic}"
+
+TOPIC: "${cleanedTopic}"
+Difficulty Level: ${difficulty.toUpperCase()}
+${difficultyInstructions[difficulty]}
+
+REQUIREMENTS:
+1. Generate EXACTLY ${missingCount} questions - no more, no less
+2. Each question must have exactly 4 options
+3. Each option must be a non-empty string
+4. correctAnswer must be 0, 1, 2, or 3
+5. Return ONLY valid JSON array
+
+OUTPUT FORMAT:
+[
+  {
+    "question": "Your question text here",
+    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+    "correctAnswer": 0,
+    "explanation": "Why this answer is correct"
+  }
+]
+
+Return ONLY the JSON array, no markdown, no extra text.`;
+
+          let additionalResponseText =
+            model === "ollama"
+              ? await generateWithOllama(additionalPrompt, OLLAMA_MODEL)
+              : await generateWithGemini(additionalPrompt);
+
+          // Parse additional questions
+          let additionalJsonText = additionalResponseText;
+          if (additionalResponseText.includes("```json")) {
+            additionalJsonText = additionalResponseText
+              .split("```json")[1]
+              .split("```")[0]
+              .trim();
+          } else if (additionalResponseText.includes("```")) {
+            additionalJsonText = additionalResponseText
+              .split("```")[1]
+              .split("```")[0]
+              .trim();
+          }
+
+          additionalJsonText = additionalJsonText
+            .replace(/<[^>]*>/g, "")
+            .replace(/｜[^｜]*｜/g, "")
+            .replace(/\s*<｜.*$/g, "")
+            .replace(/,(\s*[}\]])/g, "$1")
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+            .trim();
+
+          let additionalQuestions;
+          try {
+            additionalQuestions = JSON.parse(additionalJsonText);
+          } catch (parseError) {
+            const firstBracket = additionalJsonText.indexOf("[");
+            const lastBracket = additionalJsonText.lastIndexOf("]");
+            if (firstBracket !== -1 && lastBracket !== -1) {
+              const extractedJson = additionalJsonText.substring(
+                firstBracket,
+                lastBracket + 1
+              );
+              const fixedJson = extractedJson
+                .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+                .replace(/[\r\n\t]/g, " ")
+                .replace(/,(\s*[}\]])/g, "$1")
+                .trim();
+              additionalQuestions = JSON.parse(fixedJson);
+            } else {
+              throw parseError;
+            }
+          }
+
+          if (
+            Array.isArray(additionalQuestions) &&
+            additionalQuestions.length > 0
+          ) {
+            // Take only what we need
+            const questionsToAdd = additionalQuestions.slice(0, missingCount);
+            questions = questions.concat(questionsToAdd);
+            console.log(
+              `✅ Successfully added ${questionsToAdd.length} questions. Total: ${questions.length}`
+            );
+          } else {
+            console.warn(
+              `⚠️ Could not generate additional questions. Proceeding with ${questions.length} questions.`
+            );
+          }
+        } catch (retryError) {
+          console.error(
+            `❌ Failed to generate additional questions:`,
+            retryError
+          );
+          console.log(
+            `⚠️ Proceeding with ${questions.length} questions instead of ${numberOfQuestions}`
+          );
+        }
+      }
+    }
+
     // Validate each question has required fields AND valid content
     questions.forEach((q, index) => {
       if (!q.question || typeof q.question !== "string") {
@@ -348,6 +873,19 @@ IMPORTANT:
           `Question ${index + 1} missing or invalid 'question' field`
         );
       }
+
+      // Clean up options - remove "Option A:" prefix only
+      if (Array.isArray(q.options)) {
+        q.options = q.options.map((opt) => {
+          if (typeof opt === "string") {
+            return opt
+              .replace(/^Option [A-D]:\s*/i, "") // Remove "Option A:"
+              .trim();
+          }
+          return opt;
+        });
+      }
+
       if (!Array.isArray(q.options)) {
         throw new Error(`Question ${index + 1} 'options' must be an array`);
       }
@@ -382,6 +920,34 @@ IMPORTANT:
           );
         }
       });
+
+      // Convert correctAnswer to number if it's a letter (A, B, C, D)
+      if (typeof q.correctAnswer === "string") {
+        const letterToIndex = {
+          A: 0,
+          B: 1,
+          C: 2,
+          D: 3,
+          a: 0,
+          b: 1,
+          c: 2,
+          d: 3,
+        };
+        if (letterToIndex.hasOwnProperty(q.correctAnswer)) {
+          q.correctAnswer = letterToIndex[q.correctAnswer];
+          console.log(
+            `✅ Converted correctAnswer from letter to index for question ${
+              index + 1
+            }`
+          );
+        } else {
+          // Try parsing as number
+          const parsed = parseInt(q.correctAnswer);
+          if (!isNaN(parsed)) {
+            q.correctAnswer = parsed;
+          }
+        }
+      }
 
       if (
         typeof q.correctAnswer !== "number" ||

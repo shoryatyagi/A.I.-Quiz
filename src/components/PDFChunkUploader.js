@@ -11,6 +11,7 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
   const [file, setFile] = useState(null);
   const [quizName, setQuizName] = useState("");
   const [numberOfQuestions, setNumberOfQuestions] = useState(10);
+  const [model, setModel] = useState("gemini");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -120,6 +121,7 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
           chunks,
           numberOfQuestions: numQuestions,
           quizName: quizName.trim() || file.name.replace(".pdf", ""),
+          model,
         }),
       });
 
@@ -217,6 +219,26 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
             </label>
           </>
         )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          AI Model
+        </label>
+        <select
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] p-3 transition-all cursor-pointer"
+          disabled={loading}
+        >
+          <option value="gemini">Google Gemini 2.0 (Cloud)</option>
+          <option value="ollama">Ollama (Local)</option>
+        </select>
+        <p className="mt-1 text-xs text-slate-500">
+          {model === "gemini" 
+            ? "Using Google's Gemini AI in the cloud" 
+            : "Using Ollama running on your local machine (requires Ollama to be installed and running)"}
+        </p>
       </div>
 
       <div>

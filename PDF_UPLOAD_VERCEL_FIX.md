@@ -1,14 +1,17 @@
 # PDF Upload Error Fix - "JSON.parse: unexpected character"
 
 ## Problem
+
 Getting error: `JSON.parse: unexpected character at line 1 column 1 of the JSON data` when uploading PDF on Vercel.
 
 ## Root Cause
+
 Vercel has a **10-second timeout** for serverless functions on the Free/Hobby plan. PDF processing takes longer, so the function times out and returns an HTML error page instead of JSON.
 
 ## ✅ Solution Applied
 
 ### 1. Created `vercel.json` Configuration
+
 Added timeout configuration for API routes:
 
 ```json
@@ -28,11 +31,13 @@ Added timeout configuration for API routes:
 ```
 
 ### 2. Enhanced Error Handling
+
 Updated `PDFUploader.js` to detect and report non-JSON responses.
 
 ## 🚀 Deployment Steps
 
 ### Step 1: Commit and Push
+
 ```bash
 git add vercel.json src/components/PDFUploader.js
 git commit -m "Add Vercel timeout config for PDF processing"
@@ -40,11 +45,14 @@ git push
 ```
 
 ### Step 2: Vercel Will Auto-Deploy
+
 - Vercel will detect the changes and redeploy
 - Wait for deployment to complete
 
 ### Step 3: Verify Environment Variables
+
 Make sure these are set in Vercel:
+
 - `OPENROUTER_API_KEY` - Your OpenRouter API key
 - `CLOUDINARY_CLOUD_NAME` - Your Cloudinary cloud name
 - `CLOUDINARY_API_KEY` - Your Cloudinary API key
@@ -54,31 +62,38 @@ Make sure these are set in Vercel:
 ## ⚠️ Vercel Plan Limitations
 
 ### Free/Hobby Plan
+
 - **Max Duration:** 10 seconds (default)
 - **With Config:** Can extend to 60 seconds for specific routes
 - **Issue:** Large PDFs may still timeout
 
 ### Pro Plan ($20/month)
+
 - **Max Duration:** 300 seconds (5 minutes)
 - **Better for:** Large PDF processing
 
 ## 🔍 Alternative Solutions
 
 ### Option 1: Use Smaller PDFs
+
 - Keep PDFs under 5 pages
 - Process faster within timeout limits
 
 ### Option 2: Upgrade Vercel Plan
+
 - Pro plan gives 5-minute timeout
 - Better for production use
 
 ### Option 3: Move PDF Processing to Separate Service
+
 Deploy PDF processing to:
+
 - **Railway.app** (recommended - more generous timeouts)
 - **Render.com**
 - **AWS Lambda** with longer timeout
 
 ### Option 4: Use Edge Runtime (Not Recommended)
+
 Edge runtime has different limitations and doesn't support all Node.js APIs needed for PDF parsing.
 
 ## 🧪 Testing After Deployment
@@ -114,6 +129,7 @@ If still getting errors:
 ## 💡 Quick Test
 
 After redeployment, try uploading a **1-page PDF** first to verify:
+
 - If it works → timeout was the issue
 - If it still fails → check environment variables and API keys
 
@@ -127,16 +143,20 @@ After redeployment, try uploading a **1-page PDF** first to verify:
 Check these in order:
 
 1. **Vercel Environment Variables:**
+
    - All variables from `.env.local` must be in Vercel
    - Especially `OPENROUTER_API_KEY` and Cloudinary credentials
 
 2. **MongoDB Atlas:**
+
    - Network access allows 0.0.0.0/0
 
 3. **Function Logs:**
+
    - Check Vercel dashboard for actual error messages
 
 4. **API Keys:**
+
    - Verify OpenRouter API key is valid
    - Test key at https://openrouter.ai/
 
