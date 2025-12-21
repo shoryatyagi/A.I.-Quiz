@@ -29,7 +29,9 @@ export async function POST(request) {
       );
     }
 
-    console.log(`🤖 Generating ${numQuestions} questions from ${chunks.length} PDF chunks...`);
+    console.log(
+      `🚀 Generating ${numQuestions} questions from ${chunks.length} PDF chunks...`
+    );
 
     // Select the number of chunks equal to number of questions
     const selectedChunks = chunks.slice(0, numQuestions);
@@ -39,9 +41,11 @@ export async function POST(request) {
       .map((chunk, index) => `[Section ${index + 1}]\n${chunk}`)
       .join("\n\n---\n\n");
 
-    console.log(`📊 Using ${selectedChunks.length} chunks (${combinedText.length} characters total)`);
+    console.log(
+      `📊 Using ${selectedChunks.length} chunks (${combinedText.length} characters total)`
+    );
 
-    // Generate quiz using Gemini
+    // Generate quiz using Groq
     const quiz = await generateQuizFromText(combinedText, numQuestions);
 
     console.log(`✅ Quiz generated successfully: ${quiz.length} questions`);
@@ -60,10 +64,10 @@ export async function POST(request) {
     console.error("❌ Error generating quiz from PDF chunks:", error);
 
     // Specific error messages
-    if (error.message.includes("Gemini API")) {
+    if (error.message.includes("Groq API")) {
       return NextResponse.json(
         {
-          error: "Gemini API error. Please check your API key and try again.",
+          error: "Groq API error. Please check your API key and try again.",
           details: error.message,
         },
         { status: 500 }
@@ -73,7 +77,8 @@ export async function POST(request) {
     if (error.message.includes("Invalid API key")) {
       return NextResponse.json(
         {
-          error: "Invalid Gemini API key. Please check GEMINI_API_KEY environment variable.",
+          error:
+            "Invalid Groq API key. Please check GROQ_API_KEY environment variable.",
           details: error.message,
         },
         { status: 500 }

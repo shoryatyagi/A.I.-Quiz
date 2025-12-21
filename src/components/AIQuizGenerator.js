@@ -191,7 +191,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
           </button>
         </div>
         <p className="mt-1 text-xs text-slate-500">
-          Powered by Google Gemini 2.0 Flash AI
+          Powered by Groq AI (LLaMA 3.3 70B)
         </p>
       </div>
 

@@ -26,9 +26,9 @@ export async function POST(request) {
       );
     }
 
-    console.log(`🤖 Generating quiz using Gemini AI`);
+    console.log(`🚀 Generating quiz using Groq AI`);
 
-    // Generate quiz using Gemini AI
+    // Generate quiz using Groq AI
     const quiz = await generateQuizFromPrompt(
       topic.trim(),
       numberOfQuestions,
