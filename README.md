@@ -4,7 +4,7 @@ Next.js 15 and React 19 frontend for QuizMaster. The Flask API and Socket.IO ser
 
 ## Project walkthrough
 
-[![Watch the project demo](youtube-thumbnail.jpg)](https://youtu.be/MbdkvGmE6mA)
+[![Watch the project demo](youtube-thumbnail.png)](https://youtu.be/MbdkvGmE6mA)
 
 ## Run locally
 
