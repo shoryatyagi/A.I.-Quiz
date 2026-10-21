@@ -21,20 +21,39 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase (prevent duplicate initialization)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
+let authInstance;
+let googleProviderInstance;
 
-// Force account selection on each sign-in
-googleProvider.setCustomParameters({
-  prompt: 'select_account'
-});
+// Firebase Auth depends on browser APIs. Initialize it lazily so importing
+// this module during Next.js server rendering/prerendering is safe.
+export function getFirebaseAuth() {
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase Auth can only be initialized in the browser.');
+  }
 
-export { 
-  auth, 
-  googleProvider, 
-  signInWithPopup, 
-  signOut,
-  onAuthStateChanged 
-};
+  if (!authInstance) {
+    const missingConfig = Object.entries(firebaseConfig)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingConfig.length > 0) {
+      throw new Error(`Missing Firebase configuration: ${missingConfig.join(', ')}`);
+    }
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    authInstance = getAuth(app);
+  }
+
+  return authInstance;
+}
+
+export function getGoogleProvider() {
+  if (!googleProviderInstance) {
+    googleProviderInstance = new GoogleAuthProvider();
+    googleProviderInstance.setCustomParameters({ prompt: 'select_account' });
+  }
+
+  return googleProviderInstance;
+}
+
+export { signInWithPopup, signOut, onAuthStateChanged };

@@ -2,8 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
-  auth,
-  googleProvider,
+  getFirebaseAuth,
+  getGoogleProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -17,44 +17,51 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Get ID token for API requests
-        const idToken = await firebaseUser.getIdToken();
+    let unsubscribe;
 
-        // Create session with backend
-        try {
-          await fetch(`${API_URL}/api/auth/session`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-              "Content-Type": "application/json",
-            },
+    try {
+      unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (firebaseUser) => {
+        if (firebaseUser) {
+          // Get ID token for API requests
+          const idToken = await firebaseUser.getIdToken();
+
+          // Create session with backend
+          try {
+            await fetch(`${API_URL}/api/auth/session`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${idToken}`,
+                "Content-Type": "application/json",
+              },
+            });
+          } catch (error) {
+            console.error("Failed to create session:", error);
+          }
+
+          setUser({
+            id: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            image: firebaseUser.photoURL,
+            getIdToken: () => firebaseUser.getIdToken(),
           });
-        } catch (error) {
-          console.error("Failed to create session:", error);
+        } else {
+          setUser(null);
         }
-
-        setUser({
-          id: firebaseUser.uid,
-          email: firebaseUser.email,
-          name: firebaseUser.displayName,
-          image: firebaseUser.photoURL,
-          getIdToken: () => firebaseUser.getIdToken(),
-        });
-      } else {
-        setUser(null);
-      }
+        setLoading(false);
+      });
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
       setLoading(false);
-    });
+    }
 
-    return () => unsubscribe();
+    return () => unsubscribe?.();
   }, []);
 
   const signIn = async () => {
     try {
       setLoading(true);
-      await signInWithPopup(auth, googleProvider);
+      await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
     } catch (error) {
       console.error("Sign in error:", error);
       throw error;
@@ -66,7 +73,7 @@ export function AuthProvider({ children }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      await firebaseSignOut(auth);
+      await firebaseSignOut(getFirebaseAuth());
       setUser(null);
     } catch (error) {
       console.error("Sign out error:", error);
@@ -78,8 +85,11 @@ export function AuthProvider({ children }) {
 
   // Helper to get current ID token for API calls
   const getIdToken = useCallback(async () => {
-    if (auth.currentUser) {
-      return await auth.currentUser.getIdToken();
+    if (typeof window === "undefined") return null;
+
+    const currentUser = getFirebaseAuth().currentUser;
+    if (currentUser) {
+      return await currentUser.getIdToken();
     }
     return null;
   }, []);
