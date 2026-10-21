@@ -3,6 +3,7 @@
 Next.js 15 and React 19 frontend for QuizMaster. The Flask API and Socket.IO server are maintained in the separate [backend repository](https://github.com/shoryatyagi/flask-backend).
 
 ## Project walkthrough
+[Watch the project demo](https://youtu.be/MbdkvGmE6mA)
 
 [![Watch the project demo](youtube-thumbnail.png)](https://youtu.be/MbdkvGmE6mA)
 
