@@ -4,11 +4,7 @@ Next.js 15 and React 19 frontend for QuizMaster. The Flask API and Socket.IO ser
 
 ## Project walkthrough
 
-Add the walkthrough video as `public/project-walkthrough.mp4` in this repository. Once committed, the video will be served from `/project-walkthrough.mp4`:
-
-<video src="https://raw.githubusercontent.com/shoryatyagi/A.I.-Quiz/develop/public/project-walkthrough.mp4" controls width="720"></video>
-
-If the hosting site does not display embedded video, [open the video file](https://github.com/shoryatyagi/A.I.-Quiz/blob/develop/public/project-walkthrough.mp4). Replace these URLs if the default branch or video path changes.
+[![Watch the project demo](youtube-thumbnail.jpg)](https://youtu.be/MbdkvGmE6mA)
 
 ## Run locally
 
