@@ -120,7 +120,10 @@ export default function ModePage() {
     console.log("Connecting to WebSocket:", wsURL);
 
     const newSocket = io(wsURL, {
-      transports: ["websocket", "polling"],
+      // Establish the Socket.IO session over polling first, then upgrade to
+      // WebSocket when the load balancer and browser allow it. This preserves
+      // multiplayer connectivity if the WebSocket upgrade cannot complete.
+      transports: ["polling", "websocket"],
     });
 
     newSocket.on("connect", () => {
