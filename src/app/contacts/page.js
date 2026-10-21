@@ -14,10 +14,10 @@ export default function ContactPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#101622] mb-4">
+          <h1 className="mb-4 text-3xl font-extrabold tracking-tight text-[#101622] sm:text-4xl md:text-5xl">
             Get in Touch
           </h1>
-          <p className="text-lg text-[#4a5568] max-w-2xl mx-auto">
+          <p className="mx-auto max-w-2xl text-base text-[#4a5568] sm:text-lg">
             We&apos;d love to hear from you! Whether you have a question about
             features, need support, or just want to say hello, feel free to
             reach out.
@@ -31,7 +31,7 @@ export default function ContactPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-white p-8 rounded-xl shadow-lg border border-[#e2e8f0] hover:shadow-xl transition-all duration-300"
+            className="w-full max-w-md rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-lg transition-all duration-300 hover:shadow-xl sm:p-8"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">

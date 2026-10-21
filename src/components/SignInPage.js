@@ -4,7 +4,7 @@ import GoogleAuthButton from "./GoogleAuthButton";
 
 export default function SignInPage() {
   return (
-    <div className="flex items-center justify-center mt-20 bg-background-light px-4">
+    <div className="mt-12 flex items-center justify-center bg-background-light px-4 sm:mt-20">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -22,12 +22,12 @@ export default function SignInPage() {
           </svg>
 
           {/* Title */}
-          <h2 className="mt-6 text-3xl font-bold tracking-tight text-slate-900">
+          <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Sign in to QuizMaster
           </h2>
 
           {/* Subtitle */}
-          <p className="mt-2 text-lg text-slate-600">
+          <p className="mt-2 text-base text-slate-600 sm:text-lg">
             Unlock Unlimited Quizzes and Compete with Friends!
           </p>
         </div>

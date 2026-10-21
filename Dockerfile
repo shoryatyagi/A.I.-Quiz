@@ -43,7 +43,6 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/server.js ./server.js
 COPY --from=builder /app/package.json ./package.json
 
 # Copy node_modules for custom server (Socket.IO)
@@ -65,5 +64,5 @@ ENV PORT=3000
 # Use dumb-init as PID 1 for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application with custom server
+# Start the standalone Next.js server
 CMD ["node", "server.js"]

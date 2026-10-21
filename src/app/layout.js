@@ -16,12 +16,12 @@ export default function RootLayout({ children }) {
           <Navbar />
           <div className="flex-grow">{children}</div>
           <footer className="bg-background-light border-t border-gray-200">
-            <div className="container mx-auto px-6 py-8">
+            <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-8">
               <div className="flex flex-col md:flex-row items-center justify-between">
                 <p className="text-sm text-gray-500">
                   © 2024 QuizMaster. All rights reserved.
                 </p>
-                <div className="flex items-center gap-6 mt-4 md:mt-0">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:mt-0">
                   <a
                     href="#"
                     className="text-sm text-gray-500 hover:text-primary transition-colors"

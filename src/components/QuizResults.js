@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import {
   Trophy,
@@ -9,25 +9,32 @@ import {
   Award,
   CheckCircle,
   XCircle,
-  Home,
   Clock,
   Target,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
+import { API_URL } from "@/lib/api";
+
 export default function QuizResults({
-  quiz,
-  userAnswers,
+  quiz = [],
+  userAnswers = [],
   answerTimes = [], // Time spent on each question (solo mode)
-  leaderboard = null,
+  leaderboard: incomingLeaderboard = null,
   playerName = "",
   onPlayAgain,
   mode = "solo",
   roomCode = null,
   metadata = null,
 }) {
-  const { data: session } = useSession();
+  const { user, getIdToken } = useAuth();
+  const safeQuiz = Array.isArray(quiz) ? quiz : [];
+  const safeAnswers = Array.isArray(userAnswers) ? userAnswers : [];
+  const leaderboard = Array.isArray(incomingLeaderboard)
+    ? incomingLeaderboard.filter((player) => player && typeof player.name === "string")
+    : null;
+  const safeAnswerTimes = Array.isArray(answerTimes) ? answerTimes : [];
   const hasSavedRef = useRef(false); // Track if we've already saved
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentLeaderboardPage, setCurrentLeaderboardPage] = useState(0);
@@ -61,8 +68,9 @@ export default function QuizResults({
 
     // For solo mode, compare answer TEXT (since we now store text, not indices)
     let correct = 0;
-    userAnswers.forEach((selectedAnswerText, index) => {
-      const question = quiz[index];
+    safeAnswers.forEach((selectedAnswerText, index) => {
+      const question = safeQuiz[index];
+      if (!question?.options?.[question.correctAnswer]) return;
       const correctAnswerText = question.options[question.correctAnswer];
       if (selectedAnswerText === correctAnswerText) {
         correct++;
@@ -72,6 +80,7 @@ export default function QuizResults({
   };
 
   const formatTime = (ms) => {
+    ms = Number.isFinite(Number(ms)) ? Math.max(0, Number(ms)) : 0;
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -87,15 +96,15 @@ export default function QuizResults({
       return currentPlayerData.totalTime || 0;
     }
     // For solo mode, calculate total time from answerTimes array
-    if (mode === "solo" && answerTimes.length > 0) {
-      return answerTimes.reduce((total, time) => total + time, 0);
+    if (mode === "solo" && safeAnswerTimes.length > 0) {
+      return safeAnswerTimes.reduce((total, time) => total + (Number(time) || 0), 0);
     }
     return 0;
   };
 
-  const score = calculateScore();
-  const totalQuestions = quiz.length;
-  const percentage = Math.round((score / totalQuestions) * 100);
+  const totalQuestions = safeQuiz.length;
+  const score = Math.min(totalQuestions, Math.max(0, Number(calculateScore()) || 0));
+  const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
   const totalTime = getTotalTime();
 
   // Get current player's rank
@@ -109,18 +118,32 @@ export default function QuizResults({
 
   const playerRank = getCurrentPlayerRank();
 
+  const hasValidQuiz = safeQuiz.length > 0 && safeQuiz.every((question) =>
+    question &&
+    typeof question.question === "string" &&
+    question.question.trim() &&
+    Array.isArray(question.options) &&
+    question.options.length === 4 &&
+    question.options.every((option) => typeof option === "string" && option.trim()) &&
+    Number.isInteger(question.correctAnswer) &&
+    question.correctAnswer >= 0 &&
+    question.correctAnswer < question.options.length
+  );
+
   // Save quiz history to MongoDB when results are shown (only once)
   useEffect(() => {
     const saveQuizHistory = async () => {
-      // Check if already saved or no session or no user email
-      if (!session?.user?.email || hasSavedRef.current) {
+      // Check if already saved or no user
+      if (!user?.email || hasSavedRef.current) {
         console.log("⏭️ Skipping save:", {
-          hasSession: !!session,
-          hasEmail: !!session?.user?.email,
+          hasUser: !!user,
+          hasEmail: !!user?.email,
           alreadySaved: hasSavedRef.current,
         });
         return;
       }
+
+      if (safeQuiz.length === 0) return;
 
       console.log("💾 Attempting to save quiz history...");
 
@@ -128,20 +151,20 @@ export default function QuizResults({
       hasSavedRef.current = true;
 
       // Prepare questions data with answers
-      const questionsData = quiz.map((question, index) => {
+      const questionsData = safeQuiz.map((question, index) => {
         let userAnswerText;
         let isCorrect;
 
         if (leaderboard && currentPlayerData) {
           // Multiplayer mode
-          const answerObj = currentPlayerData.answers?.find(
+          const answerObj = (Array.isArray(currentPlayerData.answers) ? currentPlayerData.answers : []).find(
             (ans) => ans.questionText === question.question
           );
           userAnswerText = answerObj?.selectedAnswerText;
           isCorrect = answerObj?.isCorrect;
         } else {
           // Solo mode
-          userAnswerText = userAnswers[index];
+          userAnswerText = safeAnswers[index];
           const correctAnswerText = question.options[question.correctAnswer];
           isCorrect = userAnswerText === correctAnswerText;
         }
@@ -169,10 +192,14 @@ export default function QuizResults({
       };
 
       try {
-        const response = await fetch("/api/quiz-history", {
+        // Get Firebase ID token for authentication
+        const idToken = await getIdToken();
+
+        const response = await fetch(`${API_URL}/api/quiz-history`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(idToken && { "Authorization": `Bearer ${idToken}` }),
           },
           body: JSON.stringify(historyData),
         });
@@ -194,7 +221,7 @@ export default function QuizResults({
 
     saveQuizHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.email]); // Only run when user email is available
+  }, [user?.email]); // Only run when user email is available
 
   const getRankIcon = (rank) => {
     switch (rank) {
@@ -209,12 +236,28 @@ export default function QuizResults({
     }
   };
 
+  if (!hasValidQuiz) {
+    return (
+      <main className="flex-1 px-4 py-12 text-center" role="alert">
+        <h1 className="text-2xl font-bold text-slate-900">Results unavailable</h1>
+        <p className="mt-2 text-slate-600">The quiz data is incomplete. Return home to continue.</p>
+        <button
+          type="button"
+          onClick={onPlayAgain}
+          className="mt-6 rounded-lg bg-[#135bec] px-6 py-3 font-semibold text-white"
+        >
+          Return home
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
             Quiz Results
           </h1>
           <p className="mt-4 text-lg text-slate-600">
@@ -224,7 +267,7 @@ export default function QuizResults({
 
         {/* Score Display */}
         <div className="mb-12 flex justify-center">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:justify-center">
             {playerRank && (
               <div className="flex items-center gap-4 rounded-xl bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 p-6">
                 {playerRank === 1 ? (
@@ -270,7 +313,7 @@ export default function QuizResults({
 
         {/* Leaderboard (Multiplayer Mode) */}
         {leaderboard && leaderboard.length > 0 && (
-          <div className="mb-8 rounded-lg border border-slate-200/80 bg-white/50 p-6">
+          <div className="mb-8 rounded-lg border border-slate-200/80 bg-white/50 p-4 sm:p-6">
             <h3 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
               <Trophy className="w-6 h-6 text-yellow-500" />
               Leaderboard
@@ -297,7 +340,7 @@ export default function QuizResults({
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: relativeIndex * 0.1 }}
-                          className={`p-4 rounded-lg flex items-center gap-4 ${
+                          className={`flex items-start gap-2 rounded-lg p-3 sm:items-center sm:gap-4 sm:p-4 ${
                             rank === 1
                               ? "bg-yellow-50 border-2 border-yellow-300"
                               : rank === 2
@@ -325,11 +368,11 @@ export default function QuizResults({
                             )}
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2">
                               <span className="text-sm font-bold text-slate-500 min-w-[2rem]">
                                 #{rank}
                               </span>
-                              <span className="font-bold text-lg text-slate-800">
+                              <span className="break-words text-base font-bold text-slate-800 sm:text-lg">
                                 {player.name}
                               </span>
                               {isCurrentPlayer && (
@@ -343,7 +386,7 @@ export default function QuizResults({
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-slate-600 mt-1">
+                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
                               <div className="flex items-center gap-1">
                                 <Target className="w-4 h-4" />
                                 <span className="font-medium">
@@ -405,23 +448,23 @@ export default function QuizResults({
         {/* Answer Review with Pagination */}
         <div className="mb-8">
           {(() => {
-            const question = quiz[currentQuestionIndex];
+            const question = safeQuiz[currentQuestionIndex];
             let userAnswerText;
             let isCorrect;
 
             if (leaderboard && currentPlayerData) {
-              const answerObj = currentPlayerData.answers?.find(
+              const answerObj = (Array.isArray(currentPlayerData.answers) ? currentPlayerData.answers : []).find(
                 (ans) => ans.questionText === question.question
               );
               userAnswerText = answerObj?.selectedAnswerText;
               isCorrect = answerObj?.isCorrect;
             } else if (leaderboard && !currentPlayerData) {
-              userAnswerText = userAnswers[currentQuestionIndex];
+              userAnswerText = safeAnswers[currentQuestionIndex];
               const correctAnswerText =
                 question.options[question.correctAnswer];
               isCorrect = userAnswerText === correctAnswerText;
             } else {
-              userAnswerText = userAnswers[currentQuestionIndex];
+              userAnswerText = safeAnswers[currentQuestionIndex];
               const correctAnswerText =
                 question.options[question.correctAnswer];
               isCorrect = userAnswerText === correctAnswerText;
@@ -447,7 +490,7 @@ export default function QuizResults({
                               <p className="font-medium text-red-800">
                                 Your Answer
                               </p>
-                              <p className="text-slate-700">{userAnswerText}</p>
+                              <p className="text-slate-700">{userAnswerText ?? "No answer recorded."}</p>
                             </div>
                           </div>
                           {/* Correct Answer */}
@@ -472,7 +515,7 @@ export default function QuizResults({
                             <p className="font-medium text-green-800">
                               Your Answer (Correct)
                             </p>
-                            <p className="text-slate-700">{userAnswerText}</p>
+                            <p className="text-slate-700">{userAnswerText ?? "No answer recorded."}</p>
                           </div>
                         </div>
                       )}
@@ -507,12 +550,12 @@ export default function QuizResults({
             </button>
 
             <span className="text-sm text-slate-500">
-              Question {currentQuestionIndex + 1} of {quiz.length}
+              Question {currentQuestionIndex + 1} of {safeQuiz.length}
             </span>
 
             <button
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-              disabled={currentQuestionIndex === quiz.length - 1}
+              disabled={currentQuestionIndex === safeQuiz.length - 1}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               Next

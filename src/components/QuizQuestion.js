@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock } from "lucide-react";
 
@@ -9,44 +9,56 @@ export default function QuizQuestion({
   questionNumber,
   totalQuestions,
   onAnswer,
-  mode,
+  waitingForResponse = false,
+  onExit,
   showFeedback = false,
 }) {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
-  const [startTime, setStartTime] = useState(Date.now());
+  const startTimeRef = useRef(Date.now());
+  const answeredRef = useRef(false);
   const [answered, setAnswered] = useState(false);
 
   // Reset state when question changes
   useEffect(() => {
-    console.log("🔄 Question changed to:", questionNumber);
     setSelectedAnswer(null);
     setAnswered(false);
-    setStartTime(Date.now());
+    answeredRef.current = false;
+    startTimeRef.current = Date.now();
     setTimeSpent(0);
   }, [questionNumber]);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeSpent(Date.now() - startTime);
+      setTimeSpent(Math.max(0, Date.now() - startTimeRef.current));
     }, 100);
 
     return () => clearInterval(timer);
-  }, [startTime]);
+  }, [questionNumber]);
 
   const handleAnswer = (answerIndex) => {
-    if (answered) return;
+    if (answeredRef.current || answered) return;
+    if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex >= question.options.length) return;
 
-    console.log("✅ Answer clicked in QuizQuestion:", answerIndex);
-    console.log("📊 Question number:", questionNumber);
-    console.log("📊 Mode:", mode);
-
+    answeredRef.current = true;
     setSelectedAnswer(answerIndex);
     setAnswered(true);
 
-    // Call onAnswer callback which will handle navigation
-    console.log("📤 Calling onAnswer callback...");
-    onAnswer(answerIndex, timeSpent);
+    const elapsed = Math.max(0, Date.now() - startTimeRef.current);
+    setTimeSpent(elapsed);
+    try {
+      const accepted = onAnswer?.(answerIndex, elapsed);
+      if (accepted === false) {
+        answeredRef.current = false;
+        setSelectedAnswer(null);
+        setAnswered(false);
+      }
+    } catch (error) {
+      console.error("Failed to submit answer:", error);
+      answeredRef.current = false;
+      setSelectedAnswer(null);
+      setAnswered(false);
+    }
   };
 
   const getOptionClass = (index) => {
@@ -62,28 +74,40 @@ export default function QuizQuestion({
   };
 
   // ✅ Check for empty options before rendering
-  const hasEmptyOptions = question.options.some(
-    (opt) => !opt || !opt.trim()
-  );
+  const validQuestion =
+    question &&
+    typeof question.question === "string" &&
+    question.question.trim() &&
+    Array.isArray(question.options) &&
+    question.options.length === 4 &&
+    question.options.every((option) => typeof option === "string" && option.trim()) &&
+    Number.isInteger(question.correctAnswer) &&
+    question.correctAnswer >= 0 &&
+    question.correctAnswer < question.options.length;
+  const safeTotalQuestions = Number.isFinite(totalQuestions) && totalQuestions > 0
+    ? totalQuestions
+    : 1;
 
-  if (hasEmptyOptions) {
+  if (!validQuestion) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-3xl mx-auto p-8"
+        className="mx-auto w-full max-w-3xl px-4 py-5 sm:p-6 md:p-8"
       >
-        <div className="bg-red-50 border-2 border-red-400 rounded-2xl shadow-xl p-8 text-center">
-          <h3 className="text-xl font-bold text-red-600 mb-2">⚠️ Question Data Error</h3>
+        <div className="rounded-2xl border-2 border-red-400 bg-red-50 p-5 text-center shadow-xl sm:p-8" role="alert">
+          <h3 className="text-xl font-bold text-red-600 mb-2">Question unavailable</h3>
           <p className="text-red-700 mb-4">
-            This question has incomplete data with empty options. This should not happen.
+            This question has incomplete data and cannot be answered.
           </p>
           <p className="text-sm text-red-600 mb-4">
-            Please report this issue and try generating the quiz again.
+            Return home and try generating or joining the quiz again.
           </p>
-          <div className="text-xs text-gray-600 bg-white p-3 rounded border border-red-200">
-            <strong>Debug Info:</strong> Question {questionNumber} - {question.options.filter(opt => !opt || !opt.trim()).length} empty option(s) detected
-          </div>
+          {onExit && (
+            <button type="button" onClick={onExit} className="rounded-lg bg-[#135bec] px-5 py-2.5 font-semibold text-white">
+              Return home
+            </button>
+          )}
         </div>
       </motion.div>
     );
@@ -94,9 +118,9 @@ export default function QuizQuestion({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="w-full max-w-3xl mx-auto p-8"
+      className="mx-auto w-full max-w-3xl px-4 py-5 sm:p-6 md:p-8"
     >
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <div className="rounded-2xl bg-white p-4 shadow-xl sm:p-6 md:p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="text-sm font-semibold text-gray-600">
@@ -113,16 +137,21 @@ export default function QuizQuestion({
         {/* Progress Bar */}
         <div className="w-full h-2 bg-gray-200 rounded-full mb-6 overflow-hidden">
           <motion.div
+            role="progressbar"
+            aria-label="Quiz progress"
+            aria-valuemin={0}
+            aria-valuemax={safeTotalQuestions}
+            aria-valuenow={Math.min(questionNumber, safeTotalQuestions)}
             initial={{ width: 0 }}
             animate={{
-              width: `${(questionNumber / totalQuestions) * 100}%`,
+              width: `${(questionNumber / safeTotalQuestions) * 100}%`,
             }}
             className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
           />
         </div>
 
         {/* Question */}
-        <h3 className="text-2xl font-bold text-gray-800 mb-8">
+        <h3 className="mb-6 text-xl font-bold text-gray-800 sm:mb-8 sm:text-2xl">
           {question.question}
         </h3>
 
@@ -135,7 +164,8 @@ export default function QuizQuestion({
               whileTap={!answered ? { scale: 0.98 } : {}}
               onClick={() => handleAnswer(index)}
               disabled={answered}
-              className={`w-full p-4 border-2 rounded-xl text-left transition-all flex items-center gap-3 cursor-pointer ${getOptionClass(
+              aria-pressed={selectedAnswer === index}
+              className={`flex w-full cursor-pointer items-start gap-3 rounded-xl border-2 p-3 text-left transition-all sm:items-center sm:p-4 ${getOptionClass(
                 index
               )}`}
             >
@@ -156,7 +186,7 @@ export default function QuizQuestion({
             animate={{ opacity: 1 }}
             className="text-center text-gray-600 text-sm"
           >
-            Moving to next question...
+            {waitingForResponse ? "Submitting your answer…" : "Moving to next question…"}
           </motion.div>
         )}
       </div>

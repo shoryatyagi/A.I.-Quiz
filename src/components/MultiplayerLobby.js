@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Copy, Check, Play, X } from "lucide-react";
 
@@ -9,43 +9,33 @@ export default function MultiplayerLobby({
   roomCode,
   isHost,
   players: initialPlayers = [],
+  connectionAvailable = false,
+  starting = false,
   onStartQuiz,
   onCancel,
 }) {
-  const [players, setPlayers] = useState(initialPlayers);
+  const players = Array.isArray(initialPlayers) ? initialPlayers : [];
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState("");
+  const copyTimeoutRef = useRef(null);
 
-  // Update players when initialPlayers changes
-  useEffect(() => {
-    setPlayers(initialPlayers);
-  }, [initialPlayers]);
+  useEffect(() => () => clearTimeout(copyTimeoutRef.current), []);
 
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on("player-joined", ({ players: updatedPlayers }) => {
-      setPlayers(updatedPlayers);
-    });
-
-    socket.on("player-left", ({ playerName, totalPlayers }) => {
-      setPlayers((prev) => prev.filter((p) => p !== playerName));
-    });
-
-    socket.on("player-removed", ({ players: updatedPlayers }) => {
-      setPlayers(updatedPlayers);
-    });
-
-    return () => {
-      socket.off("player-joined");
-      socket.off("player-left");
-      socket.off("player-removed");
-    };
-  }, [socket]);
-
-  const copyRoomCode = () => {
-    navigator.clipboard.writeText(roomCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyRoomCode = async () => {
+    try {
+      if (!roomCode || !navigator.clipboard?.writeText) {
+        setCopyError("Copy is unavailable. Select the code to copy it manually.");
+        return;
+      }
+      await navigator.clipboard.writeText(roomCode);
+      setCopyError("");
+      setCopied(true);
+      clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+      setCopyError("Could not copy the code. Select it and copy it manually.");
+    }
   };
 
   const getPlayerInitials = (name) => {
@@ -77,7 +67,7 @@ export default function MultiplayerLobby({
     console.log("Socket exists:", !!socket);
     console.log("Room code:", roomCode);
     
-    if (!isHost || !socket) {
+    if (!isHost || !socket?.connected) {
       console.log("❌ Cannot remove - isHost:", isHost, "socket:", !!socket);
       return;
     }
@@ -89,8 +79,8 @@ export default function MultiplayerLobby({
   return (
     <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-2xl text-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg border border-slate-200">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">Quiz Lobby</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6 md:p-8">
+          <h2 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">Quiz Lobby</h2>
           <p className="text-slate-600 mb-8">
             Share the code below to invite others to your quiz!
           </p>
@@ -99,11 +89,13 @@ export default function MultiplayerLobby({
           <div className="mb-8">
             <p className="text-sm text-slate-500 mb-2">JOIN CODE</p>
             <div className="flex justify-center items-center gap-2">
-              <div className="text-5xl font-bold tracking-widest text-slate-900 bg-slate-100 px-6 py-3 rounded-lg">
+              <div className="rounded-lg bg-slate-100 px-3 py-3 text-3xl font-bold tracking-[0.2em] text-slate-900 sm:px-6 sm:text-5xl sm:tracking-widest">
                 {roomCode}
               </div>
               <button
+                type="button"
                 onClick={copyRoomCode}
+                aria-label="Copy room code"
                 className="h-14 w-14 flex items-center justify-center rounded-lg bg-slate-200 hover:bg-slate-300 transition-colors cursor-pointer"
               >
                 {copied ? (
@@ -113,6 +105,7 @@ export default function MultiplayerLobby({
                 )}
               </button>
             </div>
+            {copyError && <p role="status" className="mt-2 text-sm text-slate-600">{copyError}</p>}
           </div>
 
           {/* Players List */}
@@ -124,7 +117,7 @@ export default function MultiplayerLobby({
               {players.length > 0 ? (
                 players.map((player, index) => (
                   <motion.div
-                    key={index}
+                    key={`${player}-${index}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
@@ -174,7 +167,7 @@ export default function MultiplayerLobby({
           {/* Non-host waiting message */}
           {!isHost && (
             <div className="mb-8">
-              <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">
                   Waiting for host to start...
                 </h3>
@@ -207,11 +200,11 @@ export default function MultiplayerLobby({
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={onStartQuiz}
-                disabled={players.length < 1}
+                disabled={players.length < 1 || !connectionAvailable || starting}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-[#135bec] text-white font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Play className="w-5 h-5" />
-                Start Quiz
+                {starting ? "Starting…" : "Start Quiz"}
               </button>
               {onCancel && (
                 <button

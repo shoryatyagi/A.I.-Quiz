@@ -14,8 +14,8 @@ export default function LandingPage({ isAuthenticated = false }) {
 
   return (
     <main className="flex-grow flex items-center">
-      <div className="container mx-auto px-6 py-16 text-center">
-        <div className="w-full h-[500px] rounded-xl bg-cover bg-center flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      <div className="container mx-auto px-4 py-8 text-center sm:px-6 sm:py-16">
+        <div className="relative flex h-auto min-h-[500px] w-full flex-col items-center justify-center overflow-hidden rounded-xl bg-cover bg-center px-4 py-10 sm:p-8">
           {/* Background Image with Overlay */}
           <div className="absolute inset-0">
             <Image
@@ -34,7 +34,7 @@ export default function LandingPage({ isAuthenticated = false }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl md:text-6xl font-black text-white leading-tight tracking-tight"
+              className="text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl md:text-6xl"
             >
               Unlock the Power of AI-Driven Quizzes
             </motion.h1>
@@ -53,11 +53,11 @@ export default function LandingPage({ isAuthenticated = false }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.6 }}
-              className="mt-8 flex flex-wrap justify-center gap-4"
+              className="mt-8 flex flex-col justify-center gap-4 sm:flex-row sm:flex-wrap"
             >
               <button
                 onClick={() => handleSelectMode("solo")}
-                className="bg-primary text-white font-bold px-8 py-4 rounded-lg text-base hover:bg-primary/90 transition-all duration-200 transform hover:scale-105 hover:shadow-xl flex items-center gap-3 cursor-pointer"
+                className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-lg bg-primary px-5 py-3 text-base font-bold text-white transition-all duration-200 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:w-auto sm:px-8 sm:py-4"
               >
                 <User className="h-6 w-6" />
                 <div className="text-left">
@@ -70,7 +70,7 @@ export default function LandingPage({ isAuthenticated = false }) {
 
               <button
                 onClick={() => handleSelectMode("multiplayer")}
-                className="bg-white/10 backdrop-blur-sm text-white font-bold px-8 py-4 rounded-lg text-base hover:bg-white/20 transition-all duration-200 transform hover:scale-105 hover:shadow-xl flex items-center gap-3 cursor-pointer"
+                className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-lg bg-white/10 px-5 py-3 text-base font-bold text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white/20 hover:shadow-xl sm:w-auto sm:px-8 sm:py-4"
               >
                 <Users className="h-6 w-6" />
                 <div className="text-left">

@@ -8,13 +8,8 @@ import AIQuizGenerator from "./AIQuizGenerator";
 export default function QuizCreator({ onQuizGenerated, onBack }) {
   const [activeTab, setActiveTab] = useState("ai"); // 'pdf' or 'ai'
 
-  const handleTabChange = (tab) => {
-    console.log("Switching to tab:", tab);
-    setActiveTab(tab);
-  };
-
   return (
-    <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className="container mx-auto flex-grow px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="max-w-3xl mx-auto">
         {/* Back Button */}
         {onBack && (
@@ -27,19 +22,22 @@ export default function QuizCreator({ onQuizGenerated, onBack }) {
           </button>
         )}
 
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">
           Create a New Quiz
         </h2>
-        <p className="mt-4 text-lg text-slate-600">
+        <p className="mt-3 text-base text-slate-600 sm:mt-4 sm:text-lg">
           Generate a quiz from a PDF document or using AI prompt.
         </p>
 
         {/* Tab Selector */}
         <div className="mt-8">
-          <div className="bg-white p-2 rounded-lg shadow-sm">
+          <div className="bg-white p-2 rounded-lg shadow-sm" role="tablist" aria-label="Quiz source">
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === "pdf"}
+                aria-controls="quiz-source-panel"
                 onClick={() => setActiveTab("pdf")}
                 className={`text-sm font-semibold py-2.5 px-4 rounded-md transition-all duration-200 cursor-pointer ${
                   activeTab === "pdf"
@@ -51,6 +49,9 @@ export default function QuizCreator({ onQuizGenerated, onBack }) {
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === "ai"}
+                aria-controls="quiz-source-panel"
                 onClick={() => setActiveTab("ai")}
                 className={`text-sm font-semibold py-2.5 px-4 rounded-md transition-all duration-200 cursor-pointer ${
                   activeTab === "ai"
@@ -66,7 +67,7 @@ export default function QuizCreator({ onQuizGenerated, onBack }) {
 
         {/* Tab Content */}
         <div className="mt-8">
-          <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+          <div id="quiz-source-panel" role="tabpanel" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-8">
             {activeTab === "pdf" && (
               <PDFUploader onQuizGenerated={onQuizGenerated} />
             )}

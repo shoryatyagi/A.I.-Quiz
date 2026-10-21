@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -16,9 +16,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Loader from "@/components/Loader";
+import { API_URL } from "@/lib/api";
 
 export default function QuizDetailsPage() {
-  const { data: session, status } = useSession();
+  const { user, status, getIdToken } = useAuth();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -32,7 +33,12 @@ export default function QuizDetailsPage() {
   const fetchQuizDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/quiz-history?id=${quizId}`);
+      const idToken = await getIdToken();
+      const response = await fetch(`${API_URL}/api/quiz-history?id=${quizId}`, {
+        headers: {
+          ...(idToken && { Authorization: `Bearer ${idToken}` }),
+        },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -128,7 +134,7 @@ export default function QuizDetailsPage() {
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="mb-2 break-words text-2xl font-bold text-gray-900 sm:text-3xl">
                 {quiz.quizTitle}
               </h1>
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
@@ -146,7 +152,7 @@ export default function QuizDetailsPage() {
               <Trophy className="w-6 h-6 text-yellow-500" />
               <span
                 className={`px-4 py-2 text-lg font-semibold rounded-full ${getScoreBadgeColor(
-                  quiz.percentage
+                  quiz.percentage,
                 )}`}
               >
                 {quiz.percentage}%
@@ -155,7 +161,7 @@ export default function QuizDetailsPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
             <div className="bg-slate-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-600 mb-1">Total Questions</p>
               <p className="text-2xl font-bold text-gray-900">
@@ -212,8 +218,8 @@ export default function QuizDetailsPage() {
                       idx === currentQuestionIndex
                         ? "bg-[#135bec] text-white scale-105 shadow-lg"
                         : q.isCorrect
-                        ? "bg-green-100 text-green-700 hover:bg-green-200 hover:scale-105"
-                        : "bg-red-100 text-red-700 hover:bg-red-200 hover:scale-105"
+                          ? "bg-green-100 text-green-700 hover:bg-green-200 hover:scale-105"
+                          : "bg-red-100 text-red-700 hover:bg-red-200 hover:scale-105"
                     }`}
                   >
                     {idx + 1}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,9 +18,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Loader from "@/components/Loader";
+import { API_URL } from "@/lib/api";
 
 export default function HistoryPage() {
-  const { data: session, status } = useSession();
+  const { user, status, getIdToken } = useAuth();
   const router = useRouter();
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
@@ -29,6 +30,26 @@ export default function HistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date"); // 'date' or 'score'
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const idToken = await getIdToken();
+      const response = await fetch(`${API_URL}/api/quiz-history`, {
+        headers: {
+          ...(idToken && { Authorization: `Bearer ${idToken}` }),
+        },
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setHistory(data.history);
+      }
+    } catch (error) {
+      console.error("Error fetching history:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [getIdToken]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -39,7 +60,7 @@ export default function HistoryPage() {
     if (status === "authenticated") {
       fetchHistory();
     }
-  }, [status, router]);
+  }, [status, router, fetchHistory]);
 
   useEffect(() => {
     // Filter and sort history
@@ -58,25 +79,15 @@ export default function HistoryPage() {
     setFilteredHistory(filtered);
   }, [history, searchQuery, sortBy]);
 
-  const fetchHistory = async () => {
-    try {
-      const response = await fetch("/api/quiz-history");
-      const data = await response.json();
-
-      if (data.success) {
-        setHistory(data.history);
-      }
-    } catch (error) {
-      console.error("Error fetching history:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchQuizDetails = async (quizId) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/quiz-history?id=${quizId}`);
+      const idToken = await getIdToken();
+      const response = await fetch(`${API_URL}/api/quiz-history?id=${quizId}`, {
+        headers: {
+          ...(idToken && { "Authorization": `Bearer ${idToken}` }),
+        },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -316,9 +327,9 @@ export default function HistoryPage() {
         {/* Header with Search and Filters */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <h2 className="text-3xl font-bold text-gray-900">My Quizzes</h2>
-          <div className="flex items-center gap-4">
+          <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4 md:w-auto">
             {/* Search Input */}
-            <div className="relative w-full md:w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 className="w-full pl-10 pr-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-200 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] transition-all"
@@ -330,7 +341,7 @@ export default function HistoryPage() {
             </div>
 
             {/* Filter Buttons */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 self-start sm:self-auto">
               <button
                 onClick={() => setSortBy("date")}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 transform hover:scale-105 cursor-pointer ${

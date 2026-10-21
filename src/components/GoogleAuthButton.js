@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn, signOut, useSession } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
@@ -9,36 +9,36 @@ export default function GoogleAuthButton({
   variant = "default",
   showNameOnDesktop = true,
 }) {
-  const { data: session, status } = useSession();
+  const { user, loading, signIn, signOut } = useAuth();
   const [imageError, setImageError] = useState(false);
 
-  if (status === "loading") {
+  if (loading) {
     return (
       <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
     );
   }
 
-  if (session) {
+  if (user) {
     return (
       <div className="flex items-center gap-3">
         {/* Only show circular profile picture */}
         <div className="relative group">
-          {session.user?.image && !imageError ? (
+          {user?.image && !imageError ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={session.user.image}
-              alt={session.user.name || "User"}
+              src={user.image}
+              alt={user.name || "User"}
               className="w-10 h-10 rounded-full cursor-pointer ring-2 ring-gray-200 hover:ring-[#135bec] transition-all duration-200 transform hover:scale-105"
-              title={session.user.name}
+              title={user.name}
               onError={() => setImageError(true)}
               referrerPolicy="no-referrer"
             />
           ) : (
             <div
               className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer ring-2 ring-gray-200 hover:ring-[#135bec] transition-all duration-200 transform hover:scale-105"
-              title={session.user.name}
+              title={user.name}
             >
-              {session.user?.name?.charAt(0).toUpperCase() || "U"}
+              {user?.name?.charAt(0).toUpperCase() || "U"}
             </div>
           )}
 
@@ -46,10 +46,10 @@ export default function GoogleAuthButton({
           <div className="absolute right-0 top-12 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible overflow-hidden group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 animate-fadeIn">
             <div className="p-3 border-b border-gray-100">
               <p className="font-semibold text-gray-800 text-sm">
-                {session.user?.name}
+                {user?.name}
               </p>
               <p className="text-xs text-gray-500 truncate">
-                {session.user?.email}
+                {user?.email}
               </p>
             </div>
             <button
@@ -71,7 +71,7 @@ export default function GoogleAuthButton({
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.98 }}
-        onClick={() => signIn("google")}
+        onClick={() => signIn()}
         className="bg-[#135bec] text-white text-sm font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg"
       >
         Get Started
@@ -83,7 +83,7 @@ export default function GoogleAuthButton({
   if (variant === "large") {
     return (
       <button
-        onClick={() => signIn("google")}
+        onClick={() => signIn()}
         className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#135bec] px-4 py-3 text-white font-semibold shadow-sm hover:bg-[#0d47c4] focus:outline-none focus:ring-2 focus:ring-[#135bec] focus:ring-offset-2 transition-all cursor-pointer"
       >
         <svg
@@ -120,7 +120,7 @@ export default function GoogleAuthButton({
     <motion.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      onClick={() => signIn("google")}
+      onClick={() => signIn()}
       className="px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-2 shadow-sm"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">

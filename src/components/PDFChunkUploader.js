@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Upload, FileText, Loader2, Sparkles, AlertCircle } from "lucide-react";
 
 const MIN_QUESTIONS = 5;
+const MAX_QUESTIONS = 50;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function PDFChunkUploader({ onQuizGenerated }) {
@@ -19,6 +20,7 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (loading) return;
     if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
     } else if (e.type === "dragleave") {
@@ -32,13 +34,21 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
       return false;
     }
 
-    if (selectedFile.type !== "application/pdf") {
+    if (
+      selectedFile.type !== "application/pdf" &&
+      !selectedFile.name.toLowerCase().endsWith(".pdf")
+    ) {
       setError("Please select a PDF file");
       return false;
     }
 
+    if (selectedFile.size === 0) {
+      setError("This file is empty. Please select a different PDF.");
+      return false;
+    }
+
     if (selectedFile.size > MAX_FILE_SIZE) {
-      setError("File size must be less than 5MB");
+      setError("File size cannot exceed 5MB");
       return false;
     }
 
@@ -47,9 +57,14 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && validateFile(selectedFile)) {
+    // Clear the native input so selecting the same file again triggers change.
+    e.target.value = "";
+    if (!selectedFile || loading) return;
+    if (validateFile(selectedFile)) {
       setFile(selectedFile);
       setError("");
+    } else {
+      setFile(null);
     }
   };
 
@@ -57,11 +72,14 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    if (loading) return;
 
     const droppedFile = e.dataTransfer.files?.[0];
     if (droppedFile && validateFile(droppedFile)) {
       setFile(droppedFile);
       setError("");
+    } else if (droppedFile) {
+      setFile(null);
     }
   };
 
@@ -74,12 +92,13 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
       return;
     }
 
-    const numQuestions = parseInt(numberOfQuestions);
-    if (numQuestions < MIN_QUESTIONS) {
-      setError(`Please enter at least ${MIN_QUESTIONS} questions`);
+    const numQuestions = Number(numberOfQuestions);
+    if (!Number.isInteger(numQuestions) || numQuestions < MIN_QUESTIONS || numQuestions > MAX_QUESTIONS) {
+      setError(`Choose a whole number from ${MIN_QUESTIONS} to ${MAX_QUESTIONS}`);
       return;
     }
 
+    if (loading) return;
     setLoading(true);
     setUploadProgress(20);
 
@@ -100,11 +119,11 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
       setUploadProgress(60);
 
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
+        const errorData = await uploadResponse.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to process PDF");
       }
 
-      const { chunks } = await uploadResponse.json();
+      const { chunks } = await uploadResponse.json().catch(() => ({}));
 
       if (!chunks || chunks.length === 0) {
         throw new Error("No text extracted from PDF");
@@ -119,22 +138,25 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
         body: JSON.stringify({
           chunks,
           numberOfQuestions: numQuestions,
-          quizName: quizName.trim() || file.name.replace(".pdf", ""),
+          quizName: quizName.trim() || file.name.replace(/\.pdf$/i, ""),
         }),
       });
 
       if (!quizResponse.ok) {
-        const errorData = await quizResponse.json();
+        const errorData = await quizResponse.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to generate quiz");
       }
 
-      const { quiz, metadata } = await quizResponse.json();
+      const { quiz, metadata } = await quizResponse.json().catch(() => ({}));
+      if (!Array.isArray(quiz) || quiz.length !== numQuestions) {
+        throw new Error("The server returned an incomplete quiz. Please try again.");
+      }
 
       setUploadProgress(100);
       onQuizGenerated(quiz, metadata);
     } catch (err) {
       console.error("Error generating quiz:", err);
-      setError(err.message || "Failed to generate quiz from PDF");
+      setError(err.message || "Unable to generate a quiz from this PDF. Check your connection and try again.");
     } finally {
       setLoading(false);
       setUploadProgress(0);
@@ -144,10 +166,11 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
   return (
     <form onSubmit={handleGenerate} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
+        <label htmlFor="pdf-quiz-name" className="block text-sm font-medium text-slate-700 mb-2">
           Quiz Name (Optional)
         </label>
         <input
+          id="pdf-quiz-name"
           type="text"
           value={quizName}
           onChange={(e) => setQuizName(e.target.value)}
@@ -158,7 +181,7 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
       </div>
 
       <div
-        className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 transition-all ${
+        className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-all sm:p-12 ${
           dragActive
             ? "border-[#135bec] bg-[#135bec]/5"
             : file
@@ -174,7 +197,7 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
           <div className="w-full text-center space-y-3">
             <FileText className="w-12 h-12 text-green-600 mx-auto" />
             <div>
-              <p className="text-slate-700 font-medium">{file.name}</p>
+            <p className="break-all text-slate-700 font-medium">{file.name}</p>
               <p className="text-sm text-slate-500 mt-1">
                 {(file.size / 1024).toFixed(2)} KB
               </p>
@@ -220,25 +243,41 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">
+        <label htmlFor="pdf-num-questions" className="block text-sm font-medium text-slate-700 mb-2">
           Number of Questions
         </label>
         <input
+          id="pdf-num-questions"
           type="number"
           min={MIN_QUESTIONS}
+          max={MAX_QUESTIONS}
+          step={1}
           value={numberOfQuestions}
-          onChange={(e) => setNumberOfQuestions(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setNumberOfQuestions(value);
+            setError("");
+          }}
+          onBlur={() => {
+            const value = Number(numberOfQuestions);
+            if (!Number.isInteger(value) || value < MIN_QUESTIONS) {
+              setNumberOfQuestions(MIN_QUESTIONS);
+            } else if (value > MAX_QUESTIONS) {
+              setNumberOfQuestions(MAX_QUESTIONS);
+            }
+          }}
           className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-[#135bec] focus:border-transparent"
           disabled={loading}
         />
         <p className="mt-2 text-xs text-slate-500">
-          Minimum {MIN_QUESTIONS} questions. Each question will use one chunk
-          from your PDF.
+          Choose {MIN_QUESTIONS}–{MAX_QUESTIONS} questions. Each question will
+          use one chunk from your PDF.
         </p>
       </div>
 
       {error && (
         <motion.div
+          role="alert"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"

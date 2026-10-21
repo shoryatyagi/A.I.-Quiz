@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock, Users, Trophy, Target, Award } from "lucide-react";
+import { Clock, Users, Trophy, Target, Award, Home } from "lucide-react";
 
-export default function WaitingForResults({ roomCode, playerStats }) {
+export default function WaitingForResults({ roomCode, playerStats, onReturnHome }) {
   const {
     correctAnswers = 0,
     totalQuestions = 10,
@@ -12,7 +12,7 @@ export default function WaitingForResults({ roomCode, playerStats }) {
   } = playerStats || {};
 
   const percentage =
-    totalQuestions > 0
+    Number.isFinite(totalQuestions) && totalQuestions > 0
       ? Math.round((correctAnswers / totalQuestions) * 100)
       : 0;
 
@@ -42,9 +42,9 @@ export default function WaitingForResults({ roomCode, playerStats }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-2xl mx-auto p-8"
+      className="mx-auto w-full max-w-2xl px-4 py-5 sm:p-6 md:p-8"
     >
-      <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+      <div className="rounded-2xl bg-white p-5 text-center shadow-xl sm:p-8 md:p-12">
         {/* Success Icon */}
         <motion.div
           initial={{ scale: 0 }}
@@ -58,7 +58,7 @@ export default function WaitingForResults({ roomCode, playerStats }) {
         </motion.div>
 
         {/* Title */}
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">
+        <h2 className="mb-2 text-2xl font-bold text-gray-800 sm:text-3xl">
           Quiz Completed! 🎉
         </h2>
 
@@ -67,12 +67,12 @@ export default function WaitingForResults({ roomCode, playerStats }) {
         </p>
 
         {/* Score Display */}
-        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-8 mb-6 text-white">
-          <div className="text-6xl font-bold mb-2">{percentage}%</div>
-          <div className="text-2xl mb-4">
+        <div className="mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 p-5 text-white sm:p-8">
+          <div className="mb-2 text-5xl font-bold sm:text-6xl">{percentage}%</div>
+          <div className="mb-4 text-xl sm:text-2xl">
             {correctAnswers} out of {totalQuestions} correct
           </div>
-          <div className="flex items-center justify-center gap-6 text-sm opacity-90">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm opacity-90 sm:gap-6">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
               <span>Total: {formatTime(totalTime)}</span>
@@ -129,6 +129,17 @@ export default function WaitingForResults({ roomCode, playerStats }) {
             {roomCode}
           </p>
         </div>
+
+        {onReturnHome && (
+          <button
+            type="button"
+            onClick={onReturnHome}
+            className="mt-6 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            <Home className="h-4 w-4" />
+            Return home
+          </button>
+        )}
       </div>
     </motion.div>
   );

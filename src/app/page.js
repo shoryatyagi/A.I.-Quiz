@@ -1,18 +1,18 @@
 ﻿"use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import LandingPage from "@/components/LandingPage";
 import SignInPage from "@/components/SignInPage";
 import Loader from "@/components/Loader";
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { user, status } = useAuth();
 
   if (status === "loading") {
     return <Loader message="Loading QuizMaster" />;
   }
 
-  if (!session) {
+  if (!user) {
     return <SignInPage />;
   }
 
