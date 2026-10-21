@@ -489,7 +489,7 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           Subnets: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
-          SecurityGroups: [!Ref BackendSecurityGroup]
+          SecurityGroups: [!Ref ServiceSecurityGroup]
       LoadBalancers:
         - { ContainerName: frontend, ContainerPort: 3000, TargetGroupArn: !Ref FrontendTargetGroup }
   BackendService:
@@ -509,7 +509,7 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           Subnets: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
-          SecurityGroups: [!Ref ServiceSecurityGroup]
+          SecurityGroups: [!Ref BackendSecurityGroup]
       LoadBalancers:
         - { ContainerName: backend, ContainerPort: 5000, TargetGroupArn: !Ref BackendTargetGroup }
 
