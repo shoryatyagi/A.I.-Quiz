@@ -843,8 +843,8 @@ export default function ModePage() {
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Users className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center">
+                    <Users className="w-6 h-6 text-violet-700" />
                   </div>
                   <h3 id="multiplayer-mode-title" className="text-xl font-bold text-gray-900 sm:text-2xl">
                     Multiplayer Mode
@@ -877,7 +877,7 @@ export default function ModePage() {
                       }}
                       maxLength={24}
                       placeholder="Enter your name"
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-violet-500 focus:ring-2 focus:ring-violet-200 outline-none transition-all"
                       autoFocus
                     />
                   </div>
@@ -888,24 +888,28 @@ export default function ModePage() {
                 </div>
 
                 <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-                  <button
+                  <motion.button
                     onClick={handleCreateRoom}
+                    whileHover={!isCreatingRoom && socketConnected ? { y: -2 } : undefined}
+                    whileTap={!isCreatingRoom && socketConnected ? { scale: 0.98 } : undefined}
                     type="button"
                     disabled={isCreatingRoom || !socketConnected}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 hover:shadow-xl sm:px-6"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-semibold text-white shadow-lg transition-all duration-200 hover:bg-violet-700 hover:shadow-xl sm:px-6"
                   >
                     <Users className="w-5 h-5" />
                     {isCreatingRoom ? "Creating Room…" : "Create Room"}
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={handleJoinRoom}
+                    whileHover={!isCreatingRoom && socketConnected ? { y: -2 } : undefined}
+                    whileTap={!isCreatingRoom && socketConnected ? { scale: 0.98 } : undefined}
                     type="button"
                     disabled={isCreatingRoom || !socketConnected}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-700 transition-all duration-200 hover:bg-gray-200 sm:px-6"
                   >
                     <LogIn className="w-5 h-5" />
                     Join Room
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -978,15 +982,17 @@ export default function ModePage() {
                   {socketError && <p role="alert" className="mt-2 text-sm text-red-600">{socketError}</p>}
                 </div>
 
-                <button
+                <motion.button
                   onClick={handleJoinRoomSubmit}
+                  whileHover={!isJoiningRoom && socketConnected ? { y: -2 } : undefined}
+                  whileTap={!isJoiningRoom && socketConnected ? { scale: 0.98 } : undefined}
                   type="button"
                   disabled={isJoiningRoom || !socketConnected}
                   className="w-full bg-green-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-green-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                 >
                   <LogIn className="w-5 h-5" />
                   {isJoiningRoom ? "Joining…" : "Join Room"}
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>

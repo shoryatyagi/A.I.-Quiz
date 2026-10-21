@@ -4,13 +4,13 @@ import GoogleAuthButton from "./GoogleAuthButton";
 
 export default function SignInPage() {
   return (
-    <div className="mt-12 flex items-center justify-center bg-background-light px-4 sm:mt-20">
-      <div className="w-full max-w-md space-y-8">
+    <main className="flex w-full flex-grow items-center justify-center px-4 py-10 sm:px-6 sm:py-16">
+      <div className="w-full max-w-md space-y-8 rounded-[1.75rem] border border-[#e9e0f7] bg-white p-6 shadow-[0_20px_60px_-38px_rgba(61,34,110,0.5)] sm:p-10">
         {/* Header */}
         <div className="text-center">
           {/* Logo */}
           <svg
-            className="mx-auto h-12 w-auto text-[#135bec]"
+            className="mx-auto h-12 w-12 rounded-2xl bg-[#f0e9ff] p-2 text-[#7438dc]"
             fill="none"
             viewBox="0 0 48 48"
             xmlns="http://www.w3.org/2000/svg"
@@ -22,12 +22,12 @@ export default function SignInPage() {
           </svg>
 
           {/* Title */}
-          <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h2 className="mt-6 text-2xl font-extrabold tracking-tight text-[#211b43] sm:text-3xl">
             Sign in to QuizMaster
           </h2>
 
           {/* Subtitle */}
-          <p className="mt-2 text-base text-slate-600 sm:text-lg">
+          <p className="mt-2 text-base font-semibold text-[#77718b] sm:text-lg">
             Unlock Unlimited Quizzes and Compete with Friends!
           </p>
         </div>
@@ -56,6 +56,6 @@ export default function SignInPage() {
           .
         </p>
       </div>
-    </div>
+    </main>
   );
 }

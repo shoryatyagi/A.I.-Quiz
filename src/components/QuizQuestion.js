@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock } from "lucide-react";
+import { Clock, Sparkles } from "lucide-react";
 
 export default function QuizQuestion({
   question,
@@ -63,11 +63,11 @@ export default function QuizQuestion({
 
   const getOptionClass = (index) => {
     if (!answered) {
-      return "bg-white hover:bg-blue-50 border-gray-300 hover:border-blue-400";
+      return "bg-white hover:bg-violet-50 border-[#e6def2] hover:border-[#a98ae8]";
     }
 
     if (index === selectedAnswer) {
-      return "bg-blue-100 border-blue-500";
+      return "bg-[#eee7ff] border-[#7438dc] text-[#4d248f]";
     }
 
     return "bg-gray-100 border-gray-300";
@@ -104,7 +104,7 @@ export default function QuizQuestion({
             Return home and try generating or joining the quiz again.
           </p>
           {onExit && (
-            <button type="button" onClick={onExit} className="rounded-lg bg-[#135bec] px-5 py-2.5 font-semibold text-white">
+            <button type="button" onClick={onExit} className="rounded-lg bg-[#7438dc] px-5 py-2.5 font-semibold text-white">
               Return home
             </button>
           )}
@@ -120,10 +120,10 @@ export default function QuizQuestion({
       exit={{ opacity: 0, y: -20 }}
       className="mx-auto w-full max-w-3xl px-4 py-5 sm:p-6 md:p-8"
     >
-      <div className="rounded-2xl bg-white p-4 shadow-xl sm:p-6 md:p-8">
+      <div className="rounded-[1.75rem] border border-[#e9e0f7] bg-white p-4 shadow-[0_22px_58px_-34px_rgba(61,34,110,0.5)] sm:p-6 md:p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="text-sm font-semibold text-gray-600">
+            <div className="text-sm font-extrabold text-[#766d8e]">
             Question {questionNumber} of {totalQuestions}
           </div>
           <div className="flex items-center gap-2 text-gray-600">
@@ -135,7 +135,7 @@ export default function QuizQuestion({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full h-2 bg-gray-200 rounded-full mb-6 overflow-hidden">
+          <div className="mb-6 h-2 w-full overflow-hidden rounded-full bg-[#eee8f7]">
           <motion.div
             role="progressbar"
             aria-label="Quiz progress"
@@ -146,7 +146,7 @@ export default function QuizQuestion({
             animate={{
               width: `${(questionNumber / safeTotalQuestions) * 100}%`,
             }}
-            className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+            className="h-full bg-gradient-to-r from-[#8c54eb] to-[#6630c3]"
           />
         </div>
 
@@ -162,6 +162,8 @@ export default function QuizQuestion({
               key={index}
               whileHover={!answered ? { scale: 1.02 } : {}}
               whileTap={!answered ? { scale: 0.98 } : {}}
+              animate={{ scale: answered && selectedAnswer === index ? [1, 1.035, 1] : 1 }}
+              transition={{ duration: 0.24 }}
               onClick={() => handleAnswer(index)}
               disabled={answered}
               aria-pressed={selectedAnswer === index}
@@ -182,11 +184,14 @@ export default function QuizQuestion({
         {/* Moving to next question message */}
         {answered && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center text-gray-600 text-sm"
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: 5, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="mx-auto flex w-fit items-center gap-2 rounded-full bg-[#f2edfb] px-4 py-2 text-sm font-bold text-[#5f378e]"
           >
-            {waitingForResponse ? "Submitting your answer…" : "Moving to next question…"}
+            <Sparkles className="h-4 w-4 text-[#ad73eb]" aria-hidden="true" />
+            {waitingForResponse ? "Answer sent — checking in…" : "Nice! Next question coming up…"}
           </motion.div>
         )}
       </div>

@@ -28,14 +28,14 @@ export default function GoogleAuthButton({
             <img
               src={user.image}
               alt={user.name || "User"}
-              className="w-10 h-10 rounded-full cursor-pointer ring-2 ring-gray-200 hover:ring-[#135bec] transition-all duration-200 transform hover:scale-105"
+              className="w-10 h-10 rounded-full cursor-pointer ring-2 ring-gray-200 hover:ring-[#7438dc] transition-all duration-200 transform hover:scale-105"
               title={user.name}
               onError={() => setImageError(true)}
               referrerPolicy="no-referrer"
             />
           ) : (
             <div
-              className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer ring-2 ring-gray-200 hover:ring-[#135bec] transition-all duration-200 transform hover:scale-105"
+              className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold cursor-pointer ring-2 ring-gray-200 hover:ring-[#7438dc] transition-all duration-200 transform hover:scale-105"
               title={user.name}
             >
               {user?.name?.charAt(0).toUpperCase() || "U"}
@@ -72,7 +72,7 @@ export default function GoogleAuthButton({
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.98 }}
         onClick={() => signIn()}
-        className="bg-[#135bec] text-white text-sm font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg"
+        className="bg-[#7438dc] text-white text-sm font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg"
       >
         Get Started
       </motion.button>
@@ -84,7 +84,7 @@ export default function GoogleAuthButton({
     return (
       <button
         onClick={() => signIn()}
-        className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#135bec] px-4 py-3 text-white font-semibold shadow-sm hover:bg-[#0d47c4] focus:outline-none focus:ring-2 focus:ring-[#135bec] focus:ring-offset-2 transition-all cursor-pointer"
+        className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#7438dc] px-4 py-3 text-white font-semibold shadow-sm hover:bg-[#5a24bb] focus:outline-none focus:ring-2 focus:ring-[#7438dc] focus:ring-offset-2 transition-all cursor-pointer"
       >
         <svg
           className="h-6 w-6"
@@ -121,7 +121,7 @@ export default function GoogleAuthButton({
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={() => signIn()}
-      className="px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-2 shadow-sm"
+      className="px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-violet-500 hover:bg-violet-50 transition-all flex items-center gap-2 shadow-sm"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path

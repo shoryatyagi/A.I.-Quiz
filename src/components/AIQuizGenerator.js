@@ -83,7 +83,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
           value={quizName}
           onChange={(e) => setQuizName(e.target.value)}
           placeholder="Enter a name for your quiz (optional)"
-          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] placeholder:text-slate-400 p-3 transition-all"
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#7438dc] focus:border-[#7438dc] placeholder:text-slate-400 p-3 transition-all"
           disabled={loading}
         />
       </div>
@@ -103,7 +103,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
           onChange={(e) => setTopic(e.target.value)}
           placeholder="e.g., 'Java programming language' or 'History of the internet' or 'Photosynthesis in plants'"
           rows="4"
-          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] placeholder:text-slate-400 resize-none p-3 transition-all"
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#7438dc] focus:border-[#7438dc] placeholder:text-slate-400 resize-none p-3 transition-all"
           disabled={loading}
         />
         <p className="mt-1 text-xs text-slate-500">
@@ -149,7 +149,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
               setNumberOfQuestions(MAX_QUESTIONS);
             }
           }}
-          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] p-3 transition-all"
+          className="w-full rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-[#7438dc] focus:border-[#7438dc] p-3 transition-all"
           disabled={loading}
         />
         <p className="mt-1 text-xs text-slate-500">
@@ -163,45 +163,51 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
           Difficulty Level
         </label>
         <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
-          <button
+          <motion.button
             type="button"
+            whileHover={!loading ? { y: -2 } : undefined}
+            whileTap={!loading ? { scale: 0.97 } : undefined}
             aria-pressed={difficulty === "easy"}
             onClick={() => setDifficulty("easy")}
             disabled={loading}
             className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
               difficulty === "easy"
-                ? "bg-[#135bec] text-white shadow-md"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                ? "bg-[#7438dc] text-white shadow-md"
+                : "bg-[#f2edfb] text-[#5f5872] hover:bg-[#e8def8]"
             }`}
           >
             Easy
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
+            whileHover={!loading ? { y: -2 } : undefined}
+            whileTap={!loading ? { scale: 0.97 } : undefined}
             aria-pressed={difficulty === "medium"}
             onClick={() => setDifficulty("medium")}
             disabled={loading}
             className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
               difficulty === "medium"
-                ? "bg-[#135bec] text-white shadow-md"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                ? "bg-[#7438dc] text-white shadow-md"
+                : "bg-[#f2edfb] text-[#5f5872] hover:bg-[#e8def8]"
             }`}
           >
             Medium
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
+            whileHover={!loading ? { y: -2 } : undefined}
+            whileTap={!loading ? { scale: 0.97 } : undefined}
             aria-pressed={difficulty === "hard"}
             onClick={() => setDifficulty("hard")}
             disabled={loading}
             className={`py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
               difficulty === "hard"
-                ? "bg-[#135bec] text-white shadow-md"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                ? "bg-[#7438dc] text-white shadow-md"
+                : "bg-[#f2edfb] text-[#5f5872] hover:bg-[#e8def8]"
             }`}
           >
             Hard
-          </button>
+          </motion.button>
         </div>
         <p className="mt-1 text-xs text-slate-500">
           Powered by Groq AI
@@ -227,10 +233,12 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
             Please enter an AI prompt to continue
           </p>
         )}
-        <button
+        <motion.button
           type="submit"
+          whileHover={!loading && topic.trim() ? { y: -2, scale: 1.015 } : undefined}
+          whileTap={!loading && topic.trim() ? { scale: 0.98 } : undefined}
           disabled={loading || !topic.trim()}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#135bec] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#7438dc] text-white font-extrabold rounded-2xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-[0_12px_24px_-14px_rgba(88,37,172,0.75)]"
         >
           {loading ? (
             <>
@@ -243,7 +251,7 @@ export default function AIQuizGenerator({ onQuizGenerated }) {
               Generate Quiz
             </>
           )}
-        </button>
+        </motion.button>
       </div>
     </form>
   );

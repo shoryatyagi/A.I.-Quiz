@@ -244,7 +244,7 @@ export default function QuizResults({
         <button
           type="button"
           onClick={onPlayAgain}
-          className="mt-6 rounded-lg bg-[#135bec] px-6 py-3 font-semibold text-white"
+          className="mt-6 rounded-lg bg-[#7438dc] px-6 py-3 font-semibold text-white"
         >
           Return home
         </button>
@@ -277,7 +277,7 @@ export default function QuizResults({
                 ) : playerRank === 3 ? (
                   <Award className="w-8 h-8 text-orange-600" />
                 ) : (
-                  <Target className="w-8 h-8 text-[#135bec]" />
+                  <Target className="w-8 h-8 text-[#7438dc]" />
                 )}
                 <div>
                   <p className="text-sm font-medium text-slate-600">
@@ -289,20 +289,20 @@ export default function QuizResults({
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-4 rounded-xl bg-[#135bec]/10 p-6">
-              <p className="text-lg font-medium text-[#135bec]">Your Score</p>
-              <p className="text-4xl font-bold text-[#135bec]">
+            <div className="flex items-center gap-4 rounded-xl bg-[#7438dc]/10 p-6">
+              <p className="text-lg font-medium text-[#7438dc]">Your Score</p>
+              <p className="text-4xl font-bold text-[#7438dc]">
                 {score}/{totalQuestions}
               </p>
             </div>
             {totalTime > 0 && (
-              <div className="flex items-center gap-4 rounded-xl bg-[#135bec]/10 p-6">
-                <Clock className="w-6 h-6 text-[#135bec]" />
+              <div className="flex items-center gap-4 rounded-xl bg-[#7438dc]/10 p-6">
+                <Clock className="w-6 h-6 text-[#7438dc]" />
                 <div>
-                  <p className="text-sm font-medium text-[#135bec]">
+                  <p className="text-sm font-medium text-[#7438dc]">
                     Total Time
                   </p>
-                  <p className="text-2xl font-bold text-[#135bec]">
+                  <p className="text-2xl font-bold text-[#7438dc]">
                     {formatTime(totalTime)}
                   </p>
                 </div>
@@ -348,7 +348,7 @@ export default function QuizResults({
                               : rank === 3
                               ? "bg-orange-50 border-2 border-orange-300"
                               : isCurrentPlayer
-                              ? "bg-[#135bec]/5 border-2 border-[#135bec]/30"
+                              ? "bg-[#7438dc]/5 border-2 border-[#7438dc]/30"
                               : "bg-slate-50"
                           }`}
                         >
@@ -376,7 +376,7 @@ export default function QuizResults({
                                 {player.name}
                               </span>
                               {isCurrentPlayer && (
-                                <span className="text-xs font-semibold text-[#135bec] bg-[#135bec]/10 px-2 py-1 rounded-full">
+                                <span className="text-xs font-semibold text-[#7438dc] bg-[#7438dc]/10 px-2 py-1 rounded-full">
                                   You
                                 </span>
                               )}
@@ -413,7 +413,7 @@ export default function QuizResults({
                             )
                           }
                           disabled={currentLeaderboardPage === 0}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                         >
                           <ChevronLeft className="w-4 h-4" />
                           Previous
@@ -431,7 +431,7 @@ export default function QuizResults({
                             )
                           }
                           disabled={currentLeaderboardPage === totalPages - 1}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                         >
                           Next
                           <ChevronRight className="w-4 h-4" />
@@ -543,7 +543,7 @@ export default function QuizResults({
             <button
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
               disabled={currentQuestionIndex === 0}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               Previous
@@ -556,7 +556,7 @@ export default function QuizResults({
             <button
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
               disabled={currentQuestionIndex === safeQuiz.length - 1}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               Next
               <ChevronRight className="w-4 h-4" />
@@ -568,7 +568,7 @@ export default function QuizResults({
         <div className="mt-12 text-center">
           <button
             onClick={onPlayAgain}
-            className="rounded-full bg-[#135bec] px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-[#135bec]/80 cursor-pointer transition-all"
+            className="rounded-full bg-[#7438dc] px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-[#7438dc]/80 cursor-pointer transition-all"
           >
             Back to Dashboard
           </button>

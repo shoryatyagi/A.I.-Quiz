@@ -175,18 +175,20 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
           value={quizName}
           onChange={(e) => setQuizName(e.target.value)}
           placeholder="Enter quiz title"
-          className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-[#135bec] focus:border-transparent"
+          className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-[#7438dc] focus:border-transparent"
           disabled={loading}
         />
       </div>
 
-      <div
+      <motion.div
+        animate={{ scale: dragActive ? 1.012 : 1 }}
+        transition={{ type: "spring", stiffness: 320, damping: 24 }}
         className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-all sm:p-12 ${
           dragActive
-            ? "border-[#135bec] bg-[#135bec]/5"
+            ? "border-[#7438dc] bg-[#7438dc]/5"
             : file
-            ? "border-green-500 bg-green-50"
-            : "border-slate-300 hover:border-slate-400"
+            ? "border-[#63d8b5] bg-[#effdf8]"
+            : "border-[#d9cdea] bg-[#fbfaff] hover:border-[#a98ae8]"
         }`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -231,16 +233,18 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
               className="hidden"
               disabled={loading}
             />
-            <label
+            <motion.label
               htmlFor="pdf-upload"
-              className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-[#135bec] text-white font-semibold rounded-lg hover:bg-[#0f4ac4] transition-colors cursor-pointer"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+            className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-[#7438dc] text-white font-extrabold rounded-2xl hover:bg-[#5a24bb] transition-colors cursor-pointer"
             >
               <Upload className="w-5 h-5" />
               Browse Files
-            </label>
+            </motion.label>
           </>
         )}
-      </div>
+      </motion.div>
 
       <div>
         <label htmlFor="pdf-num-questions" className="block text-sm font-medium text-slate-700 mb-2">
@@ -266,7 +270,7 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
               setNumberOfQuestions(MAX_QUESTIONS);
             }
           }}
-          className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-[#135bec] focus:border-transparent"
+          className="w-full rounded-lg border border-slate-300 p-3 focus:ring-2 focus:ring-[#7438dc] focus:border-transparent"
           disabled={loading}
         />
         <p className="mt-2 text-xs text-slate-500">
@@ -297,7 +301,8 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${uploadProgress}%` }}
-              className="bg-[#135bec] h-2 rounded-full transition-all"
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="bg-[#7438dc] h-2 rounded-full transition-all"
             />
           </div>
         </div>
@@ -306,7 +311,7 @@ export default function PDFChunkUploader({ onQuizGenerated }) {
       <button
         type="submit"
         disabled={loading || !file}
-        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#135bec] text-white font-semibold rounded-lg hover:bg-[#0f4ac4] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7438dc] text-white font-extrabold rounded-2xl hover:bg-[#5a24bb] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? (
           <>

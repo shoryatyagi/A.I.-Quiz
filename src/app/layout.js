@@ -1,6 +1,7 @@
 import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
 import Navbar from "@/components/Navbar";
+import { MotionConfig } from "framer-motion";
 
 export const metadata = {
   title: "QuizMaster - AI-Driven Quizzes",
@@ -12,10 +13,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="font-display">
       <body className="bg-background-light antialiased flex flex-col min-h-screen">
-        <SessionProvider>
-          <Navbar />
-          <div className="flex-grow">{children}</div>
-          <footer className="bg-background-light border-t border-gray-200">
+        <MotionConfig reducedMotion="user">
+          <SessionProvider>
+            <Navbar />
+            <div className="flex-grow">{children}</div>
+            <footer className="border-t border-[#e8e1f3] bg-background-light">
             <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-8">
               <div className="flex flex-col md:flex-row items-center justify-between">
                 <p className="text-sm text-gray-500">
@@ -43,8 +45,9 @@ export default function RootLayout({ children }) {
                 </div>
               </div>
             </div>
-          </footer>
-        </SessionProvider>
+            </footer>
+          </SessionProvider>
+        </MotionConfig>
       </body>
     </html>
   );

@@ -30,7 +30,7 @@ export default function WaitingForResults({ roomCode, playerStats, onReturnHome 
     if (percentage >= 90)
       return { text: "Outstanding! 🌟", color: "text-green-600" };
     if (percentage >= 75)
-      return { text: "Great Job! 🎯", color: "text-blue-600" };
+      return { text: "Great Job! 🎯", color: "text-violet-700" };
     if (percentage >= 60)
       return { text: "Good Effort! 👍", color: "text-purple-600" };
     return { text: "Keep Practicing! 💪", color: "text-orange-600" };
@@ -44,7 +44,7 @@ export default function WaitingForResults({ roomCode, playerStats, onReturnHome 
       animate={{ opacity: 1, scale: 1 }}
       className="mx-auto w-full max-w-2xl px-4 py-5 sm:p-6 md:p-8"
     >
-      <div className="rounded-2xl bg-white p-5 text-center shadow-xl sm:p-8 md:p-12">
+      <div className="rounded-[1.75rem] border border-[#e9e0f7] bg-white p-5 text-center shadow-[0_22px_58px_-34px_rgba(61,34,110,0.5)] sm:p-8 md:p-12">
         {/* Success Icon */}
         <motion.div
           initial={{ scale: 0 }}
@@ -67,7 +67,7 @@ export default function WaitingForResults({ roomCode, playerStats, onReturnHome 
         </p>
 
         {/* Score Display */}
-        <div className="mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 p-5 text-white sm:p-8">
+        <div className="mb-6 rounded-[1.5rem] bg-gradient-to-br from-[#8043e3] to-[#5b25bb] p-5 text-white sm:p-8">
           <div className="mb-2 text-5xl font-bold sm:text-6xl">{percentage}%</div>
           <div className="mb-4 text-xl sm:text-2xl">
             {correctAnswers} out of {totalQuestions} correct
@@ -111,12 +111,12 @@ export default function WaitingForResults({ roomCode, playerStats, onReturnHome 
         </p>
 
         {/* Info Card */}
-        <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-          <Award className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-          <p className="text-blue-900 font-medium mb-2">
+        <div className="rounded-[1.5rem] border border-[#e4dcf2] bg-[#f7f4fc] p-5 sm:p-6">
+          <Award className="w-8 h-8 text-violet-700 mx-auto mb-3" />
+          <p className="text-violet-900 font-medium mb-2">
             Final ranking will be shown when all players complete
           </p>
-          <ul className="text-blue-800 text-sm space-y-1">
+          <ul className="space-y-1 text-sm text-[#5f5872]">
             <li>✓ Ranked by correct answers</li>
             <li>✓ Tiebreaker: Fastest time wins</li>
           </ul>

@@ -33,6 +33,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!deploy/ec2/.env.deploy.example
+/deploy/ec2/.deployment-state.json
+/deploy/ec2/.keys/
 
 # vercel
 .vercel

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Copy, Check, Play, X } from "lucide-react";
 
 export default function MultiplayerLobby({
@@ -49,7 +49,7 @@ export default function MultiplayerLobby({
 
   const getPlayerColor = (index) => {
     const colors = [
-      "bg-blue-500/20 text-blue-500",
+      "bg-violet-500/20 text-violet-700",
       "bg-green-500/20 text-green-500",
       "bg-purple-500/20 text-purple-500",
       "bg-yellow-500/20 text-yellow-500",
@@ -79,32 +79,41 @@ export default function MultiplayerLobby({
   return (
     <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-2xl text-center">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-lg sm:p-6 md:p-8">
-          <h2 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">Quiz Lobby</h2>
-          <p className="text-slate-600 mb-8">
+        <div className="rounded-[1.75rem] border border-[#e9e0f7] bg-white p-4 shadow-[0_22px_58px_-34px_rgba(61,34,110,0.5)] sm:p-6 md:p-8">
+          <h2 className="mb-2 text-2xl font-extrabold tracking-tight text-[#211b43] sm:text-3xl">Quiz Lobby</h2>
+          <p className="mb-8 font-semibold text-[#77718b]">
             Share the code below to invite others to your quiz!
           </p>
 
           {/* Room Code */}
           <div className="mb-8">
-            <p className="text-sm text-slate-500 mb-2">JOIN CODE</p>
+            <p className="mb-2 text-xs font-extrabold tracking-[0.18em] text-[#8c819f]">JOIN CODE</p>
             <div className="flex justify-center items-center gap-2">
-              <div className="rounded-lg bg-slate-100 px-3 py-3 text-3xl font-bold tracking-[0.2em] text-slate-900 sm:px-6 sm:text-5xl sm:tracking-widest">
+              <div className="rounded-2xl bg-[#f2edfb] px-3 py-3 text-3xl font-extrabold tracking-[0.2em] text-[#512b91] sm:px-6 sm:text-5xl sm:tracking-widest">
                 {roomCode}
               </div>
-              <button
+              <motion.button
                 type="button"
                 onClick={copyRoomCode}
                 aria-label="Copy room code"
-                className="h-14 w-14 flex items-center justify-center rounded-lg bg-slate-200 hover:bg-slate-300 transition-colors cursor-pointer"
+                whileHover={{ y: -2, rotate: copied ? 0 : -3 }}
+                whileTap={{ scale: 0.92 }}
+                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#eee7ff] transition-colors hover:bg-[#e1d5fa] cursor-pointer"
               >
-                {copied ? (
-                  <Check className="w-6 h-6 text-green-600" />
-                ) : (
-                  <Copy className="w-6 h-6 text-slate-600" />
-                )}
-              </button>
+                <AnimatePresence mode="wait" initial={false}>
+                  {copied ? (
+                    <motion.span key="copied" initial={{ scale: 0.5, rotate: -25 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0.5 }}>
+                      <Check className="h-6 w-6 text-[#0ca97e]" />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="copy" initial={{ scale: 0.5 }} animate={{ scale: 1 }} exit={{ scale: 0.5 }}>
+                      <Copy className="h-6 w-6 text-slate-600" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </div>
+            {copied && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} role="status" className="mt-2 text-sm font-bold text-[#0ca97e]">Copied! Invite your crew.</motion.p>}
             {copyError && <p role="status" className="mt-2 text-sm text-slate-600">{copyError}</p>}
           </div>
 
@@ -113,7 +122,7 @@ export default function MultiplayerLobby({
             <h3 className="text-lg font-bold text-slate-900 mb-4 text-left">
               Players Joined ({players.length})
             </h3>
-            <div className="h-64 overflow-y-auto bg-slate-100 rounded-lg p-2 space-y-2">
+            <div className="h-64 overflow-y-auto rounded-2xl bg-[#f7f4fc] p-2 space-y-2">
               {players.length > 0 ? (
                 players.map((player, index) => (
                   <motion.div
@@ -121,7 +130,7 @@ export default function MultiplayerLobby({
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="flex items-center gap-3 p-2 rounded-md bg-white"
+                    className="flex items-center gap-3 rounded-xl border border-[#f0ebf7] bg-white p-2"
                   >
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center ${getPlayerColor(
@@ -167,28 +176,28 @@ export default function MultiplayerLobby({
           {/* Non-host waiting message */}
           {!isHost && (
             <div className="mb-8">
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 sm:p-6">
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+              <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 sm:p-6">
+                <h3 className="mb-2 text-lg font-extrabold text-[#512b91]">
                   Waiting for host to start...
                 </h3>
-                <p className="text-blue-700 text-sm">
+                <p className="text-sm font-semibold text-[#766d8e]">
                   The quiz will begin once the host starts the game
                 </p>
                 <div className="flex justify-center gap-2 mt-4">
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0 }}
-                    className="w-3 h-3 bg-blue-600 rounded-full"
+                    className="w-3 h-3 bg-violet-600 rounded-full"
                   />
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                    className="w-3 h-3 bg-blue-600 rounded-full"
+                    className="w-3 h-3 bg-violet-600 rounded-full"
                   />
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                    className="w-3 h-3 bg-blue-600 rounded-full"
+                    className="w-3 h-3 bg-violet-600 rounded-full"
                   />
                 </div>
               </div>
@@ -198,14 +207,16 @@ export default function MultiplayerLobby({
           {/* Action Buttons */}
           {isHost && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
+              <motion.button
                 onClick={onStartQuiz}
+                whileHover={connectionAvailable && players.length >= 1 && !starting ? { y: -2 } : undefined}
+                whileTap={connectionAvailable && players.length >= 1 && !starting ? { scale: 0.98 } : undefined}
                 disabled={players.length < 1 || !connectionAvailable || starting}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-[#135bec] text-white font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-[#7438dc] text-white font-extrabold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Play className="w-5 h-5" />
                 {starting ? "Starting…" : "Start Quiz"}
-              </button>
+              </motion.button>
               {onCancel && (
                 <button
                   onClick={onCancel}

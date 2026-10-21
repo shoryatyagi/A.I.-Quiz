@@ -37,14 +37,18 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <header className="sticky top-0 z-50 border-b border-[#e8e1f3] bg-white/95 backdrop-blur-xl">
         <div className="container mx-auto flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-          <div
-            className="flex items-center gap-3 cursor-pointer transform transition-transform hover:scale-105"
+          <button
+            type="button"
+            aria-label="QuizMaster home"
+            className="flex min-w-0 items-center gap-3 rounded-xl text-left transition-transform hover:scale-[1.02]"
             onClick={handleHomeClick}
           >
-            <div className="w-8 h-8 text-[#135bec]">
+            <div className="h-9 w-9 shrink-0 text-[#7438dc]">
               <svg
+                width="36"
+                height="36"
                 fill="none"
                 viewBox="0 0 48 48"
                 xmlns="http://www.w3.org/2000/svg"
@@ -55,8 +59,8 @@ export default function Navbar() {
                 ></path>
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-gray-900">QuizMaster</h2>
-          </div>
+            <span className="truncate text-xl font-extrabold tracking-tight text-[#211b43]">QuizMaster</span>
+          </button>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
@@ -64,8 +68,8 @@ export default function Navbar() {
               onClick={handleHomeClick}
               className={`text-sm font-medium transition-all duration-200 transform hover:scale-105 cursor-pointer relative pb-1 ${
                 isActive("/")
-                  ? "text-[#135bec] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#135bec]"
-                  : "text-gray-600 hover:text-[#135bec]"
+                  ? "text-[#7438dc] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#7438dc]"
+                  : "text-gray-600 hover:text-[#7438dc]"
               }`}
             >
               Home
@@ -75,8 +79,8 @@ export default function Navbar() {
                 onClick={handleHistoryClick}
                 className={`text-sm font-medium transition-all duration-200 transform hover:scale-105 cursor-pointer relative pb-1 ${
                   isActive("/history")
-                    ? "text-[#135bec] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#135bec]"
-                    : "text-gray-600 hover:text-[#135bec]"
+                    ? "text-[#7438dc] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#7438dc]"
+                    : "text-gray-600 hover:text-[#7438dc]"
                 }`}
               >
                 My Quizzes
@@ -86,8 +90,8 @@ export default function Navbar() {
               onClick={handleContactClick}
               className={`text-sm font-medium transition-all duration-200 transform hover:scale-105 cursor-pointer relative pb-1 ${
                 isActive("/contacts")
-                  ? "text-[#135bec] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#135bec]"
-                  : "text-gray-600 hover:text-[#135bec]"
+                  ? "text-[#7438dc] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[#7438dc]"
+                  : "text-gray-600 hover:text-[#7438dc]"
               }`}
             >
               Contact
@@ -147,17 +151,17 @@ export default function Navbar() {
 
                 {/* User Info */}
                 {user && (
-                  <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
+                  <div className="p-6 bg-gradient-to-r from-violet-50 to-purple-50 border-b border-gray-200">
                     <div className="flex items-center gap-3">
                       {user?.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={user.image}
                           alt={user.name || "User"}
-                          className="w-12 h-12 rounded-full ring-2 ring-[#135bec]"
+                          className="w-12 h-12 rounded-full ring-2 ring-[#7438dc]"
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
                           {user?.name?.charAt(0).toUpperCase() || "U"}
                         </div>
                       )}
@@ -180,7 +184,7 @@ export default function Navbar() {
                       onClick={handleHomeClick}
                       className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                         isActive("/")
-                          ? "bg-[#135bec] text-white shadow-lg"
+                          ? "bg-[#7438dc] text-white shadow-lg"
                           : "text-gray-700 hover:bg-gray-100"
                       }`}
                     >
@@ -193,7 +197,7 @@ export default function Navbar() {
                         onClick={handleHistoryClick}
                         className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                           isActive("/history")
-                            ? "bg-[#135bec] text-white shadow-lg"
+                            ? "bg-[#7438dc] text-white shadow-lg"
                             : "text-gray-700 hover:bg-gray-100"
                         }`}
                       >
@@ -206,7 +210,7 @@ export default function Navbar() {
                       onClick={handleContactClick}
                       className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                         isActive("/contacts")
-                          ? "bg-[#135bec] text-white shadow-lg"
+                          ? "bg-[#7438dc] text-white shadow-lg"
                           : "text-gray-700 hover:bg-gray-100"
                       }`}
                     >

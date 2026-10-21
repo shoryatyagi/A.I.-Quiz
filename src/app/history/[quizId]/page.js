@@ -89,7 +89,7 @@ export default function QuizDetailsPage() {
 
   const getScoreBadgeColor = (percentage) => {
     if (percentage >= 80) return "bg-green-100 text-green-800";
-    if (percentage >= 60) return "bg-blue-100 text-blue-800";
+    if (percentage >= 60) return "bg-violet-100 text-violet-800";
     if (percentage >= 40) return "bg-yellow-100 text-yellow-800";
     return "bg-red-100 text-red-800";
   };
@@ -124,14 +124,14 @@ export default function QuizDetailsPage() {
         {/* Back Button */}
         <button
           onClick={() => router.push("/history")}
-          className="mb-6 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#135bec] transition-colors cursor-pointer"
+          className="mb-6 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#7438dc] transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to History
         </button>
 
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="mb-6 rounded-[1.5rem] border border-[#e9e0f7] bg-white p-5 shadow-[0_18px_50px_-34px_rgba(61,34,110,0.4)] sm:p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h1 className="mb-2 break-words text-2xl font-bold text-gray-900 sm:text-3xl">
@@ -180,9 +180,9 @@ export default function QuizDetailsPage() {
                 {quiz.totalQuestions - correctAnswers}
               </p>
             </div>
-            <div className="bg-blue-50 rounded-lg p-4 text-center">
+            <div className="bg-violet-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-600 mb-1">Accuracy</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-violet-700">
                 {quiz.percentage}%
               </p>
             </div>
@@ -216,7 +216,7 @@ export default function QuizDetailsPage() {
                     onClick={() => setCurrentQuestionIndex(idx)}
                     className={`min-w-[40px] h-10 flex-shrink-0 rounded-lg text-sm font-semibold transition-all duration-200 ${
                       idx === currentQuestionIndex
-                        ? "bg-[#135bec] text-white scale-105 shadow-lg"
+                        ? "bg-[#7438dc] text-white scale-105 shadow-lg"
                         : q.isCorrect
                           ? "bg-green-100 text-green-700 hover:bg-green-200 hover:scale-105"
                           : "bg-red-100 text-red-700 hover:bg-red-200 hover:scale-105"
@@ -232,7 +232,7 @@ export default function QuizDetailsPage() {
           {/* Progress bar */}
           <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
             <div
-              className="bg-[#135bec] h-2 rounded-full transition-all duration-300"
+              className="bg-[#7438dc] h-2 rounded-full transition-all duration-300"
               style={{
                 width: `${
                   ((currentQuestionIndex + 1) / quiz.totalQuestions) * 100
@@ -318,7 +318,7 @@ export default function QuizDetailsPage() {
             <button
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
               disabled={currentQuestionIndex === 0}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               Previous
@@ -331,7 +331,7 @@ export default function QuizDetailsPage() {
             <button
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
               disabled={currentQuestionIndex === quiz.totalQuestions - 1}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               Next
               <ChevronRight className="w-4 h-4" />
@@ -363,11 +363,11 @@ export default function QuizDetailsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
-              <Target className="w-8 h-8 text-blue-600" />
+            <div className="flex items-center gap-3 p-4 bg-violet-50 rounded-lg">
+              <Target className="w-8 h-8 text-violet-700" />
               <div>
                 <p className="text-sm text-gray-600">Success Rate</p>
-                <p className="text-xl font-bold text-blue-600">
+                <p className="text-xl font-bold text-violet-700">
                   {quiz.percentage}%
                 </p>
               </div>

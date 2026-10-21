@@ -6,6 +6,7 @@ yarn-error.log*
 
 # Next.js build output
 .next
+.next-*
 out
 
 # Environment files (loaded at runtime via docker-compose)

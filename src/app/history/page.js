@@ -147,7 +147,7 @@ export default function HistoryPage() {
                 setSelectedQuiz(null);
                 setCurrentQuestionIndex(0);
               }}
-              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[#135bec] cursor-pointer transition-colors"
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[#7438dc] cursor-pointer transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to My Quizzes
@@ -247,7 +247,7 @@ export default function HistoryPage() {
                   setCurrentQuestionIndex(currentQuestionIndex - 1)
                 }
                 disabled={currentQuestionIndex === 0}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Previous
@@ -265,7 +265,7 @@ export default function HistoryPage() {
                 disabled={
                   currentQuestionIndex === selectedQuiz.questions.length - 1
                 }
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#135bec]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-[#7438dc]/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
@@ -276,7 +276,7 @@ export default function HistoryPage() {
           {/* Stats Summary */}
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 text-blue-600 mb-1">
+              <div className="flex items-center gap-2 text-violet-700 mb-1">
                 <Trophy className="w-4 h-4" />
                 <span className="text-xs font-semibold">Score</span>
               </div>
@@ -332,7 +332,7 @@ export default function HistoryPage() {
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-200 focus:ring-2 focus:ring-[#135bec] focus:border-[#135bec] transition-all"
+                className="w-full pl-10 pr-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-200 focus:ring-2 focus:ring-[#7438dc] focus:border-[#7438dc] transition-all"
                 placeholder="Search quizzes..."
                 type="text"
                 value={searchQuery}
@@ -346,8 +346,8 @@ export default function HistoryPage() {
                 onClick={() => setSortBy("date")}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 transform hover:scale-105 cursor-pointer ${
                   sortBy === "date"
-                    ? "bg-[#135bec] text-white border-[#135bec]"
-                    : "text-gray-600 bg-white border-gray-200 hover:bg-[#135bec]/10"
+                    ? "bg-[#7438dc] text-white border-[#7438dc]"
+                    : "text-gray-600 bg-white border-gray-200 hover:bg-[#7438dc]/10"
                 }`}
               >
                 <Calendar className="w-4 h-4" />
@@ -357,8 +357,8 @@ export default function HistoryPage() {
                 onClick={() => setSortBy("score")}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 transform hover:scale-105 cursor-pointer ${
                   sortBy === "score"
-                    ? "bg-[#135bec] text-white border-[#135bec]"
-                    : "text-gray-600 bg-white border-gray-200 hover:bg-[#135bec]/10"
+                    ? "bg-[#7438dc] text-white border-[#7438dc]"
+                    : "text-gray-600 bg-white border-gray-200 hover:bg-[#7438dc]/10"
                 }`}
               >
                 <TrendingUp className="w-4 h-4" />
@@ -390,7 +390,7 @@ export default function HistoryPage() {
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+          <div className="overflow-hidden rounded-[1.5rem] border border-[#e9e0f7] bg-white shadow-[0_18px_50px_-34px_rgba(61,34,110,0.4)]">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left text-gray-500">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
